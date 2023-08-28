@@ -12,3 +12,4 @@ rioxarray
 confuse
 plotly
 mapclassify
+streamlit
