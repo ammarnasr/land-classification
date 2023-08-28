@@ -6,3 +6,4 @@ pyproj
 shapely
 streamlit-folium
 inotify
+joblib
