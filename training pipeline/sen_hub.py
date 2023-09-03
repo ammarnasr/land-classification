@@ -4,7 +4,7 @@ from sentinelhub import MimeType, CRS, BBox, SentinelHubRequest, DataCollection,
 
 config = SHConfig()
 
-#config.instance_id      = "19e335ae-5825-448f-a6ea-0b5dbe5c6468"
+config.instance_id      = "19e335ae-5825-448f-a6ea-0b5dbe5c6468"
 config.sh_client_id     = "ad568507-ef49-48ff-9bdb-90368803ce50"
 config.sh_client_secret = "9<9(+SV[%jwr7..<jFCDgt[Hj{W;40>@x,uGBkdO"
 

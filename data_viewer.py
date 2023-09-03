@@ -1,31 +1,8 @@
 import joblib
 import streamlit as st
-import geopandas as gpd
-import pandas as pd
 import folium
 from streamlit_folium import st_folium
-import matplotlib.pyplot as plt
 from pyproj import Geod
-from shapely import wkt
-
-
-#==================================================================================================
-#The contents of the requirements.txt file:
-#streamlit
-#geopandas
-#pandas
-#folium
-#matplotlib
-#pyproj
-#shapely
-#streamlit-folium
-
-
-
-
-
-#==================================================================================================
-
 
 
 def get_column_value_counts(df, column_name):
@@ -54,11 +31,11 @@ def main():
     gdf = joblib.load(file_path)
     gdf = gdf.to_crs(crs='EPSG:4326')
     gdf['Area_M2'] = gdf['geometry'].apply(calculate_area_in_square_meters)
-    gdf_small = gdf.sample(1000)
+
 
     #Create a map with satellite imagery as the background
     m = folium.Map(location=[14.2, 33.2], zoom_start=8)
-    tile = folium.TileLayer(
+    folium.TileLayer(
         tiles = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
         attr = 'Esri',
         name = 'Esri Satellite',
@@ -77,16 +54,6 @@ def main():
     selected_column = st.selectbox('Select column to view', column_names)
     column_value_counts = get_column_value_counts(gdf, selected_column)
     st.table(column_value_counts)
-
-    # states_value_counts = get_column_value_counts(gdf, 'State')
-    # rainfed_value_counts = get_column_value_counts(gdf, 'Rainfed')
-    # year_value_counts = get_column_value_counts(gdf, 'Year')
-    # crop_types_value_counts = get_column_value_counts(gdf, 'Crop_Type')
-    # st.table(states_value_counts)
-    # st.table(rainfed_value_counts)
-    # st.table(year_value_counts)
-    # st.table(crop_types_value_counts)
-
 
     #select the columns to group by
     groupby_columns = ['State', 'Rainfed', 'Year', 'Crop_Type']
