@@ -13,3 +13,4 @@ confuse
 plotly
 mapclassify
 streamlit
+jsonlines

@@ -104,6 +104,18 @@ def get_cloud_coverage_from_sentinelhub(polygon, date, location='unknown'):
     imgs = sen_obj.download_data()
     return imgs[0], final_dir
 
+def get_ndvi_image_from_sentinelhub(polygon, date, location='unknown'):
+    final_dir = get_final_dir(location, date, 'NDVI')
+    bbox = get_bounds_of_polygon(polygon)
+    evalscript_ndvi = new_utils.get_sentinelhub_api_evalscript('NDVI')
+    config = get_sentinelhub_api_config()
+    sen_obj = SenHub(config)
+    sen_obj.set_dir(final_dir)
+    sen_obj.make_bbox(bbox)
+    sen_obj.make_request(evalscript_ndvi, date)
+    imgs = sen_obj.download_data()
+    return imgs[0], final_dir
+
 def get_all_bands_image_from_sentinelhub(polygon, date, location='unknown'):
     final_dir = get_final_dir(location, date, 'ALL')
     bbox = get_bounds_of_polygon(polygon)
@@ -125,6 +137,8 @@ def get_any_image_from_sentinelhub(polygon, date, evalscript, location='unknown'
         return get_cloud_coverage_from_sentinelhub(polygon, date, location)
     elif evalscript == 'ALL':
         return get_all_bands_image_from_sentinelhub(polygon, date, location)
+    elif evalscript == 'NDVI':
+        return get_ndvi_image_from_sentinelhub(polygon, date, location)
     else:
         return None, None
     

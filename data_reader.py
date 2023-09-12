@@ -5,6 +5,11 @@ import rasterio
 from rasterio import plot
 import numpy as np
 import matplotlib.pyplot as plt
+import folium
+from streamlit_folium import st_folium
+import pickle
+import geopandas as gpd
+from shapely.geometry import Point
 
 def get_available_data_dataframe():
     satellite_images_dir = './data/satellite_images'
@@ -41,8 +46,7 @@ def get_available_data_dataframe():
     downloaded_data = pd.DataFrame(downloaded_data_dict)
     return downloaded_data
 
-def get_image_path_from_index(df, index):
-    row = df.iloc[index]
+def get_image_path_from_row(row):
     date = row['date']
     location = row['location']
     evalscript = row['evalscript']
@@ -62,38 +66,238 @@ def image_info(img):
     st.write(f'Image number of rows: {img.height}')
     st.write(f'Image number of pixels: {img.width * img.height}')
     #plotting the image
-    fig, ax = plt.subplots(figsize=(10,10))
-    plot.show(img, ax=ax)
-    st.pyplot(fig)
+    if img.count == 3:
+        array = img.read((1,2,3))
 
-def image_bands_as_dataframe(img):
+        #Scale the bands and convert to 8-bit for display and reordering
+        array = array / array.max()
+        array = (array * 255).astype(np.uint8)
+        array = array.transpose(1, 2, 0) # Reorder the bands to 3, 712, 477
+        fig, ax = plt.subplots(figsize=(30, 30))
+        plt.imshow(array, interpolation='nearest')
+        st.pyplot(fig)
+    else:
+        fig, ax = plt.subplots(figsize=(10,10))
+        plot.show(img, ax=ax)
+        st.pyplot(fig)
+
+
+def image_13_bands_as_dataframe(img):
     bands = []
+    bands_names = ["B01", "B02", "B03","B04","B05","B06","B07","B08","B8A","B09","B10","B11","B12"]
+    add_names = False
+    if img.count == len(bands_names):
+        add_names = True
     for i in range(1, img.count + 1):
         band = img.read(i)
         bands.append(band)
     bands = np.array(bands)
     bands = bands.reshape(img.count, img.width * img.height)
     bands = bands.T
-    bands = pd.DataFrame(bands)
+    if add_names:
+        bands = pd.DataFrame(bands, columns=bands_names)
+    else:
+        bands = pd.DataFrame(bands)
+    latitudes = []
+    longitudes = []
+    for i in range(img.height):
+        for j in range(img.width):
+            lon, lat = img.xy(i, j)
+            latitudes.append(lat)
+            longitudes.append(lon)
+    bands['latitude'] = latitudes
+    bands['longitude'] = longitudes
     return bands
+
+def image_NDVI_as_dataframe(img):
+    st.write('Getting NDVI image as dataframe')
+    bands = []
+    bands_names = ["NDVI"]
+    add_names = False
+    st.write(f'Bands Names: {bands_names}')
+    st.write(f'Image count: {img.count}')
+    if img.count == len(bands_names):
+        add_names = True
+    for i in range(1, img.count + 1):
+        band = img.read(i)
+        bands.append(band)
+    bands = np.array(bands)
+    bands = bands.reshape(img.count, img.width * img.height)
+    bands = bands.T
+    if add_names:
+        bands = pd.DataFrame(bands, columns=bands_names)
+    else:
+        bands = pd.DataFrame(bands)
+    latitudes = []
+    longitudes = []
+    for i in range(img.height):
+        for j in range(img.width):
+            lon, lat = img.xy(i, j)
+            latitudes.append(lat)
+            longitudes.append(lon)
+    bands['latitude'] = latitudes
+    bands['longitude'] = longitudes
+    return bands
+
+def image_FCOVER_as_dataframe(img):
+    st.write('Getting FCOVER image as dataframe')
+    bands = []
+    bands_names = ["FCOVER"]
+    add_names = False
+    st.write(f'Bands Names: {bands_names}')
+    st.write(f'Image count: {img.count}')
+    if img.count == len(bands_names):
+        add_names = True
+    for i in range(1, img.count + 1):
+        band = img.read(i)
+        bands.append(band)
+    bands = np.array(bands)
+    bands = bands.reshape(img.count, img.width * img.height)
+    bands = bands.T
+    if add_names:
+        bands = pd.DataFrame(bands, columns=bands_names)
+    else:
+        bands = pd.DataFrame(bands)
+    latitudes = []
+    longitudes = []
+    for i in range(img.height):
+        for j in range(img.width):
+            lon, lat = img.xy(i, j)
+            latitudes.append(lat)
+            longitudes.append(lon)
+    bands['latitude'] = latitudes
+    bands['longitude'] = longitudes
+    return bands
+
+def image_CLP_as_dataframe(img):
+    bands = []
+    bands_names = ["CLP"]
+    add_names = False
+    if img.count == len(bands_names):
+        add_names = True
+    for i in range(1, img.count + 1):
+        band = img.read(i)
+        bands.append(band)
+    bands = np.array(bands)
+    bands = bands.reshape(img.count, img.width * img.height)
+    bands = bands.T
+    if add_names:
+        bands = pd.DataFrame(bands, columns=bands_names)
+    else:
+        bands = pd.DataFrame(bands)
+    latitudes = []
+    longitudes = []
+    for i in range(img.height):
+        for j in range(img.width):
+            lon, lat = img.xy(i, j)
+            latitudes.append(lat)
+            longitudes.append(lon)
+    bands['latitude'] = latitudes
+    bands['longitude'] = longitudes
+    return bands
+
+
+def plot_lat_lon_on_folium_map(bands, sample_size=10, value_column=None):
+    bands = bands.sample(sample_size)
+    latitudes = bands['latitude'].values
+    longitudes = bands['longitude'].values
+    min_lat = min(latitudes)
+    max_lat = max(latitudes)
+    min_lon = min(longitudes)
+    max_lon = max(longitudes)
+    center_lat = (min_lat + max_lat) / 2
+    center_lon = (min_lon + max_lon) / 2
+    m = folium.Map(location=[center_lat, center_lon], zoom_start=10)
+    if value_column is None:
+        for i in range(len(latitudes)):
+            lat = latitudes[i]
+            lon = longitudes[i]
+            # folium.Marker([lat, lon]).add_to(m)
+            # folium.CircleMarker([lat, lon], radius=5, color='red', fill=True, fill_color='red').add_to(m)
+            folium.CircleMarker([lat, lon], radius=5, color='red', fill=True, fill_color='red').add_to(m)
+    else:
+        values = bands[value_column].values
+        min_value = min(values)
+        max_value = max(values)
+        for i in range(len(latitudes)):
+            lat = latitudes[i]
+            lon = longitudes[i]
+            value = values[i]
+            color = (value - min_value) / (max_value - min_value)
+            color = int(color * 255)
+            color = f'#{color:02x}{color:02x}{color:02x}'
+            folium.CircleMarker([lat, lon], radius=5, color=color, fill=True, fill_color=color).add_to(m)
+    return m
+
+
+def get_bands_gdf(row, script='ALL'):
+    date = row['date']
+    selected_image_path = get_image_path_from_row(row)
+    img = read_image_with_rasterio(selected_image_path)
+    if script == 'ALL':
+        bands_df = image_13_bands_as_dataframe(img)
+    elif script == 'NDVI':
+        bands_df = image_NDVI_as_dataframe(img)
+    elif script == 'CLP':
+        bands_df = image_CLP_as_dataframe(img)
+    elif script == 'FCOVER':
+        bands_df = image_FCOVER_as_dataframe(img)
+    else:
+        raise Exception('Invalid Script')
+    geometry = [Point(xy) for xy in zip(bands_df['longitude'], bands_df['latitude'])]
+    bands_gdf = gpd.GeoDataFrame(bands_df, geometry=geometry)
+    bands_gdf.crs = {'init': 'epsg:4326'}
+    bands_gdf = bands_gdf.to_crs(crs='EPSG:4326')
+    bands_gdf.columns = [f'{col}_{date}' for col in bands_gdf.columns]
+    return bands_gdf, img
+
+
+
+def get_training_data_evalscript(location='gaziera', evalscript='ALL'):
+    data_dir = 'data/training_data/'
+    os.makedirs(data_dir, exist_ok=True)
+    final_dir = data_dir + location + '/'
+    os.makedirs(final_dir, exist_ok=True)
+    filename = final_dir + 'training_data_' + evalscript + '.pkl'
+    if os.path.exists(filename):
+        with open(filename, 'rb') as f:
+            training_data = pickle.load(f)
+    else:
+        downloaded_data = get_available_data_dataframe()
+        downloaded_data = downloaded_data[downloaded_data['evalscript'] == evalscript]
+        downloaded_data = downloaded_data[downloaded_data['location'] == location]
+        st.write(f'Final Dataframe for {evalscript} in {location}')
+        st.write(downloaded_data)
+        total_images = len(downloaded_data.index)
+        bands_gdf_list = []
+        for index, row in downloaded_data.iterrows():
+            st.write(f'Processing Image {index + 1} of {total_images}')
+            bands_gdf, img = get_bands_gdf(row, script=evalscript)
+            bands_gdf_list.append(bands_gdf)
+        training_data = pd.concat(bands_gdf_list,axis=1,ignore_index=False)
+        with open(filename, 'wb') as f:
+            pickle.dump(training_data, f)
+    return training_data
 
 def main():
     st.write("Data Reader")
+    st.write("Getting Available Data")
     downloaded_data = get_available_data_dataframe()
     st.write(downloaded_data)
+    # st.write("Getting Training Data")
+    # training_data = get_training_data_evalscript(location='gaziera', evalscript='ALL')
+    # st.write(training_data)
+    # st.write("Getting Training Data FCOVER")
+    # training_data_FCOVER = get_training_data_evalscript(location='gaziera', evalscript='FCOVER')
+    # st.write(training_data_FCOVER)
 
-    number_of_available_images = len(downloaded_data)
-    st.write(f"Number of available images: {number_of_available_images}, Select one to view it")
-    selected_image_index = st.number_input("Select image index", 0, number_of_available_images - 1)
-    st.write(f"Selected image index: {selected_image_index}")
-    selected_image_path = get_image_path_from_index(downloaded_data, selected_image_index)
-    st.write(f"Selected image path: {selected_image_path}")
-    img = read_image_with_rasterio(selected_image_path)
-    image_info(img)
-    bands_df = image_bands_as_dataframe(img)
-    st.write(f'Bands dataframe shape: {bands_df.shape}')
-    st.write(bands_df)
-
+    #Training Data for gaziera_other_1, gaziera_other_2, gaziera_other_3 ... gaziera_other_16
+    for i in range(1, 17):
+        location = f'gaziera_other_{i}'
+        st.write(f'Getting Training Data for {location}')
+        training_data = get_training_data_evalscript(location=location, evalscript='ALL')
+        st.write(f'Getting Training Data for {location} FCOVER')
+        training_data_FCOVER = get_training_data_evalscript(location=location, evalscript='FCOVER')
 
 
 

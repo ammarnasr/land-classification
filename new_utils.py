@@ -229,18 +229,33 @@ def get_sentinelhub_api_evalscript(script_name):
     '''
     
     # Open and Read The Javascripts that will be passed to the SentinelHub API
-    with open('./scripts/cab.js') as f:
-        evalscript_cab = f.read()
-    with open('./scripts/fcover.js') as f:
-        evalscript_fcover = f.read()
-    with open('./scripts/lai.js') as f:
-        evalscript_lai = f.read()
-    with open('./scripts/truecolor.js') as f:
-        evalscript_truecolor = f.read()
-    with open('./scripts/clp.js') as f:
-        evalscript_clp = f.read()
-    with open('./scripts/all.js') as f:
-        evalscript_all = f.read()
+    if os.path.exists('./scripts/cab.js'):
+        with open('./scripts/cab.js') as f:
+            evalscript_cab = f.read()
+
+    if os.path.exists('./scripts/fcover.js'):
+        with open('./scripts/fcover.js') as f:
+            evalscript_fcover = f.read()
+
+    if os.path.exists('./scripts/lai.js'):
+        with open('./scripts/lai.js') as f:
+            evalscript_lai = f.read()
+
+    if os.path.exists('./scripts/truecolor.js'):
+        with open('./scripts/truecolor.js') as f:
+            evalscript_truecolor = f.read()
+
+    if os.path.exists('./scripts/clp.js'):
+        with open('./scripts/clp.js') as f:
+            evalscript_clp = f.read()
+
+    if os.path.exists('./scripts/all.js'):
+        with open('./scripts/all.js') as f:
+            evalscript_all = f.read()
+
+    if os.path.exists('./scripts/ndvi.js'):
+        with open('./scripts/ndvi.js') as f:
+            evalscript_ndvi = f.read()
 
     # Dictionry of JavaScript files
     Scripts = {
@@ -249,7 +264,8 @@ def get_sentinelhub_api_evalscript(script_name):
         'LAI': evalscript_lai,
         'TRUECOLOR': evalscript_truecolor,
         'CLP': evalscript_clp,
-        'ALL': evalscript_all
+        'ALL': evalscript_all,
+        'NDVI': evalscript_ndvi
     }
 
     if script_name in Scripts.keys():
