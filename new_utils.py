@@ -281,6 +281,7 @@ def get_sentinelhub_api_evalscript(script_name):
         'ALL': evalscript_all,
         'NDVI': evalscript_ndvi
     }
+    
 
     if script_name in Scripts.keys():
         return Scripts[script_name]
