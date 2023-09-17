@@ -177,14 +177,17 @@ def download_images_logic(total_polygon, date, location_name, gdf):
         st.image(tc)
 
 
-def download_preselected_dates_images_logic(total_polygon, location_name):
-    pre_selsected_dates = [
-        '2021-06-01',
-        '2021-07-16',
-        '2021-08-05',
-        '2021-09-19',
-        '2021-10-29',
-    ]
+def download_preselected_dates_images_logic(total_polygon, location_name, year='2021', dates_min_clp = False, gdf=None):
+    if not dates_min_clp:
+        pre_selsected_dates = [
+            f'{year}-06-01',
+            f'{year}-07-16',
+            f'{year}-08-05',
+            f'{year}-09-19',
+            f'{year}-10-29',
+        ]
+    else:
+        pre_selsected_dates = plot_cloud_coverage_averages_through_time(total_polygon, location_name, gdf, year=year)
     st.write(f'Preselected Dates: {pre_selsected_dates}')
     download_images_for_preselected_dates = st.button('Download Images for Preselected Dates', key='download_images_for_preselected_dates')
     if download_images_for_preselected_dates:
@@ -200,7 +203,7 @@ def download_preselected_dates_images_logic(total_polygon, location_name):
             st.image(tc)
 
 
-def plot_cloud_coverage_averages_through_time(polygon, location_name, gdf, year='2021'):
+def plot_cloud_coverage_averages_through_time(polygon, location_name, gdf, year='2022'):
     saved_path = f'./avg_cloud_coverage/{location_name}_avg_cloud_coverage_{year}.pickle'
     dates = get_avilable_dates(gdf, year)
     if os.path.exists(saved_path):
@@ -269,35 +272,96 @@ def plot_cloud_coverage_averages_through_time(polygon, location_name, gdf, year=
     for i, txt in enumerate(min_clp_averages):
         txt = f'{txt:.2f}@{min_clp_averages_dates[i]}'
         ax.annotate(txt, (min_clp_averages_dates[i], min_clp_averages[i]), fontsize=20)
+    fig_name = f'{location_name}_cloud_coverage_averages_through_time_{year}.png'
+    fig_dir = './avg_cloud_coverage'
+    os.makedirs(fig_dir, exist_ok=True)
+    fig_path = os.path.join(fig_dir, fig_name)
+    fig.savefig(fig_path)
     st.pyplot(fig)
+    return min_clp_averages_dates
 
 
 def cloud_coverage_averages_through_time_logic(total_polygon, location_name, gdf):
     cloud_coverage_averages_through_time = st.button('Cloud Coverage Averages Through Time', key='cloud_coverage_averages_through_time')
     if cloud_coverage_averages_through_time:
-        plot_cloud_coverage_averages_through_time(total_polygon, location_name, gdf)
+        return plot_cloud_coverage_averages_through_time(total_polygon, location_name, gdf)
+
+
+
+def calculate_area_in_square_meters(geometry):
+    geod = Geod(ellps="WGS84")
+    area = abs(geod.geometry_area_perimeter(geometry)[0])
+    return area
+def states_gdf_from_geojson(file_path = './data/geojsons/sudan_states.geojson'):
+    gdf = gpd.read_file(file_path)
+    gdf = gdf.to_crs(crs='EPSG:4326')
+    gdf['Area_M2'] = gdf['geometry'].apply(calculate_area_in_square_meters)
+    gdf.rename(columns={'admin1RefN':'State'}, inplace=True)
+    gdf = gdf[['State', 'Area_M2', 'geometry']]
+    return gdf
+def seq_inside(gdf_sq):
+    gdf = states_gdf_from_geojson(file_path='./data/geojsons/sudan_states_gaziera.geojson')
+    withins = []
+    for i in range(len(gdf_sq)):
+        gdf_sq_i = gdf_sq.iloc[i:i+1]
+        gdf_sq_i.reset_index(inplace=True, drop=True)
+        inisde = gdf_sq_i.within(gdf).values[0]
+        if inisde:
+            withins.append(1)
+        else:
+            withins.append(0)
+    return withins
+
+def add_state_to_map(m):
+    gdf = states_gdf_from_geojson(file_path='./data/geojsons/sudan_states_gaziera.geojson')
+    gdf.explore(m=m)
+    return m
 
 def main():
     gdf = load_data()
-    gdf, selected_state = filter_gdf_by_state_logic(gdf)
+    st.write(f'Shape Before Filtering: {gdf.shape}')
+    # gdf, selected_state = filter_gdf_by_state_logic(gdf)
+    all_states = gdf['State'].values
+    indices = [i for i, s in enumerate(all_states) if s.startswith('squares_2000')]
+    gdf = gdf.iloc[indices]
+    gdf.reset_index(inplace=True, drop=True)
+    gdf['inside'] = seq_inside(gdf)
+    gdf = gdf[gdf['inside'] == 1]
+    gdf.reset_index(inplace=True, drop=True)
+    st.write(f'Shape After Filtering: {gdf.shape}')
+    all_states = gdf['State'].unique()
     centroid = get_centroid_of_gdf(gdf)
     m = get_folium_map(center=centroid, zoom_start=10, basemap='Google Satellite')
-    gdf.explore(m=m)
     width, height, area, perimeter, state_bbox = get_bbox_info(gdf)
     folium.Rectangle(bounds=state_bbox, color='red').add_to(m)
-    gdf.explore(m=m, color='blue', name='Fields')
+    m = add_state_to_map(m)
+    gdf.explore(m=m, column='inside', name='Fields')
     #add layer control
     folium.LayerControl().add_to(m)
     st_folium(m, width=1200, height=600)
-    date = date_selection_logic(gdf)
+    # date = date_selection_logic(gdf)
     
-    location_name = st.text_input('Enter Location Name', selected_state)
+    # location_name = st.text_input('Enter Location Name', selected_state)
+    i = 756
+    gdf = gdf.iloc[i:i+1]
     total_bounds = gdf.total_bounds
     total_polygon = shapely.geometry.box(*total_bounds, ccw=True)
+    download_test_image = st.button('Download Test Image', key='download_test_image')
+    if download_test_image:
+        location_name = 'gaziera_squares_testing'
+        date = '2023-06-01'
+        eval_true_color = 'TRUECOLOR'
+        tc, tc_dir = new_app.get_any_image_from_sentinelhub(total_polygon, date, eval_true_color, location_name)
+        fig = plt.figure(figsize=(30, 8))
+        plt.imshow(tc)
+        plt.axis('off')
+        plt.title(f'True Color Image Downloaded to: {tc_dir}')
+        st.write(f'True Color Image Shape: {tc.shape}')
+        st.pyplot(fig)
 
-    cloud_coverage_averages_through_time_logic(total_polygon, location_name, gdf)
-    images_dict = download_images_logic(total_polygon, date, location_name, gdf)
-    download_preselected_dates_images_logic(total_polygon, location_name)
+    # cloud_coverage_averages_through_time_logic(total_polygon, location_name, gdf)
+    # images_dict = download_images_logic(total_polygon, date, location_name, gdf)
+    # download_preselected_dates_images_logic(total_polygon, location_name, year='2023', dates_min_clp = True, gdf=gdf)
 
     ###############################################
     #Download Images for Preselected Dates for All States starting with 'gaziera_other'

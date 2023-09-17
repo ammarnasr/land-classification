@@ -88,28 +88,20 @@ def cache_available_dates_from_sentinelhub(bbox, start_date, end_date, dates):
     return:
         None
     '''
-
-    #create cache folder if it doesn't exist
     cache_folder = './cache'
     os.makedirs(cache_folder, exist_ok=True)
     cache_dates_folder = os.path.join(cache_folder, 'cached_dates')
     os.makedirs(cache_dates_folder, exist_ok=True)
     cache_dates_file = os.path.join(cache_dates_folder, 'cached_dates.jsonl')
-    
-    #create cache_dates_file if it doesn't exist
     if not os.path.exists(cache_dates_file):
         with open(cache_dates_file, 'w') as f:
             f.write('')
-
-    #create dictonary for current entry to be cached
     current_entry = {
         'bbox': bbox,
         'start_date': start_date,
         'end_date': end_date,
         'dates': dates
     }
-
-    #write current entry to jsonl file
     with jsonl.open(cache_dates_file, mode='a') as writer:
         writer.write(current_entry)
 
@@ -126,28 +118,19 @@ def get_cached_available_dates_from_sentinelhub(bbox, start_date, end_date):
     return:
         dates: a list of dates that have available images
     '''
-
-    #cache file path
     cache_dates_file = './cache/cached_dates/cached_dates.jsonl'
     if not os.path.exists(cache_dates_file):
         return None
-    
-
-    #create dictonary for current entry to be cached
     current_entry = {
         'bbox': bbox,
         'start_date': start_date,
         'end_date': end_date,
         'dates': []
     }
-
-    #read cached dates file
     with jsonl.open(cache_dates_file, mode='r') as reader:
         for entry in reader:
             if entry['bbox'] == bbox and entry['start_date'] == start_date and entry['end_date'] == end_date:
                 return entry['dates']
-    
-
     return None
 
 

@@ -71,14 +71,14 @@ def get_points_labels(points_list, labels_gdf):
                 points_labels.append(-1)
     return points_labels
 
-def get_processed_data(raw_data , location='gaziera', evalscript='ALL'):
+def get_processed_data(raw_data , location='gaziera', evalscript='ALL', other_flag=False):
     processed_data_path = f'./data/training_data/{location}/processed_data_{evalscript}.pkl'
     if os.path.exists(processed_data_path):
         with open(processed_data_path, 'rb') as f:
             processed_data = pickle.load(f)
     else:
         binary = True
-        if 'other' in location:
+        if 'other' in location or other_flag:
             binary = False
         st.write(f'Getting labels for {location} and {evalscript} with binary={binary}')  
         labels_gdf = get_labels_gdf(location=location, binary=binary)
@@ -146,42 +146,70 @@ def read_all_processed_data(data_dir = './data/training_data/gaziera/', evalscri
     return processed_data_gdf
 
 
+def merge_final_processed_data_evalscripts_for_location(location, evalscript_gdfs):
+    evalscripts = list(evalscript_gdfs.keys())
+    stripped_gdfs = []
+    for evalscript in evalscripts:
+        gdf = evalscript_gdfs[evalscript]
+        gdf = gdf.drop(columns=['Labels'])
+        gdf = gdf.drop(columns=['latitude'])
+        gdf = gdf.drop(columns=['longitude'])
+        gdf = gdf.drop(columns=['geometry'])
+        stripped_gdfs.append(gdf)
+    gdf = pd.concat(stripped_gdfs, axis=1)
+    gdf['location'] = location
+    gdf['Labels'] = evalscript_gdfs[evalscripts[0]]['Labels']
+    gdf['latitude'] = evalscript_gdfs[evalscripts[0]]['latitude']
+    gdf['longitude'] = evalscript_gdfs[evalscripts[0]]['longitude']
+    gdf['geometry'] = evalscript_gdfs[evalscripts[0]]['geometry']
+    gdf = gpd.GeoDataFrame(gdf, geometry='geometry')
+    return gdf
+    
+
 def main():
-    locations = [ f'gaziera_other_{i}' for i in range(1, 17)]
-    locations.append('gaziera')
+    locations = [ 'Gaziera_2022', 'gaziera_2023']
     evalscripts = ['ALL', 'FCOVER']
     location_gdfs = []
+    other_flag = True
     for location in locations:
         evalscript_gdfs = {}
         for evalscript in evalscripts:
             st.write(f'Getting processed data for {location} and {evalscript}')
             raw_data = load_raw_data(location=location, evalscript=evalscript)
-            processed_data = get_processed_data(raw_data, location=location, evalscript=evalscript)
+            processed_data = get_processed_data(raw_data, location=location, evalscript=evalscript, other_flag=other_flag)
             data_dir = f'./data/training_data/{location}/'
             final_processed_data = read_all_processed_data(data_dir=data_dir, evalscript=evalscript)
-            st.write(f'Final processed data shape: {final_processed_data.shape}')
-            labels = final_processed_data['Labels']
-            value_counts_dict = labels.value_counts().to_dict()
-            st.write(labels.value_counts())
             evalscript_gdfs[evalscript] = final_processed_data
+        gdf = merge_final_processed_data_evalscripts_for_location(location, evalscript_gdfs)
+        st.write(f'Final processed data shape: {gdf.shape}')
+        st.write(gdf)
+        file_path = f'./data/joblibs/processed_data_{location}.joblib'
+        joblib.dump(gdf, file_path)
+        st.write(f'Saved processed data to {file_path}')
 
-        gdf_fcovers = evalscript_gdfs['FCOVER']
-        gdf_all = evalscript_gdfs['ALL']
-        gdf_fcover = gdf_fcovers.drop(columns=['Labels'])
-        gdf_fcover = gdf_fcovers.drop(columns=['latitude'])
-        gdf_fcover = gdf_fcovers.drop(columns=['longitude'])
-        gdf_fcover = gdf_fcovers.drop(columns=['geometry'])
-        focver_columns = gdf_fcover.columns
-        for col in focver_columns:
-            gdf_all[col] = gdf_fcover[col]
-        gdf_all['location'] = location
-        location_gdfs.append(gdf_all)
+            
+        #     labels = final_processed_data['Labels']
+        #     value_counts_dict = labels.value_counts().to_dict()
+        #     st.write(labels.value_counts())
+        #     evalscript_gdfs[evalscript] = final_processed_data
 
-    gdf = pd.concat(location_gdfs)
-    st.write(gdf.shape)
-    st.write(gdf)
-    file_path = './data/joblibs/processed_data.joblib'
-    joblib.dump(gdf, file_path)
+        # gdf_fcovers = evalscript_gdfs['FCOVER']
+        # gdf_all = evalscript_gdfs['ALL']
+        # gdf_fcover = gdf_fcovers.drop(columns=['Labels'])
+        # gdf_fcover = gdf_fcovers.drop(columns=['latitude'])
+        # gdf_fcover = gdf_fcovers.drop(columns=['longitude'])
+        # gdf_fcover = gdf_fcovers.drop(columns=['geometry'])
+        # focver_columns = gdf_fcover.columns
+        # for col in focver_columns:
+        #     gdf_all[col] = gdf_fcover[col]
+        # gdf_all['location'] = location
+        # location_gdfs.append(gdf_all)
+
+        # gdf = pd.concat(location_gdfs)
+        # st.write(gdf.shape)
+        # st.write(gdf)
+        # file_path = f'./data/joblibs/processed_data_{location}.joblib'
+        # joblib.dump(gdf, file_path)
     
  
 

@@ -26,27 +26,40 @@ def calculate_area_in_square_meters(geometry):
     return area
 
 
-def update_label_joblib_from_geojson(file_path, state_name, rainfed=-1, crop_type='Other', year=2021):
-    gdf = gpd.read_file(file_path)
-    gdf = gdf.to_crs(crs='EPSG:4326')
-    geom = gdf['geometry']
-    multipolygons_indices = geom[geom.geom_type == 'MultiPolygon'].index
-    polygons_from_multipolygons = []
-    for multipolygon in geom[multipolygons_indices]:
-        for polygon in multipolygon.geoms:
-            polygons_from_multipolygons.append(polygon)
-    gdf = gdf.drop(multipolygons_indices)
-    index = 0
-    for polygon in polygons_from_multipolygons:
-        index += 1
-        polygon_name = f'Polygon_{index}'
-        current_state_name = f'{state_name}_{index}'
-        new_row = gpd.GeoDataFrame({'geometry': [polygon], 'Name': [polygon_name], 'State': [current_state_name]})
-        gdf = gdf.append(new_row, ignore_index=True)
-    gdf['Area_M2'] = gdf['geometry'].apply(calculate_area_in_square_meters)
-    gdf['Rainfed'] = rainfed
-    gdf['Crop_Type'] = crop_type
-    gdf['Year'] = year
+def update_label_joblib_from_file(file_path, state_name, rainfed=-1, crop_type='Other', year=2021):
+    if file_path.endswith('.joblib'):
+        gdf = joblib.load(file_path)
+        gdf = gdf.to_crs(crs='EPSG:4326')
+        state = []
+        for index in range(len(gdf)):
+            state.append(f'{state_name}_{index}')
+        gdf['State'] = state
+        gdf['Year'] = year
+        gdf['Rainfed'] = rainfed
+        gdf['Crop_Type'] = crop_type
+        gdf.drop(columns=['Width', 'Height', 'location', 'Area_KM2', 'square_id'], inplace=True)
+        return gdf
+    elif file_path.endswith('.geojson'):
+        gdf = gpd.read_file(file_path)
+        gdf = gdf.to_crs(crs='EPSG:4326')
+        geom = gdf['geometry']
+        multipolygons_indices = geom[geom.geom_type == 'MultiPolygon'].index
+        polygons_from_multipolygons = []
+        for multipolygon in geom[multipolygons_indices]:
+            for polygon in multipolygon.geoms:
+                polygons_from_multipolygons.append(polygon)
+        gdf = gdf.drop(multipolygons_indices)
+        index = 0
+        for polygon in polygons_from_multipolygons:
+            index += 1
+            polygon_name = f'Polygon_{index}'
+            current_state_name = f'{state_name}_{index}'
+            new_row = gpd.GeoDataFrame({'geometry': [polygon], 'Name': [polygon_name], 'State': [current_state_name]})
+            gdf = gdf.append(new_row, ignore_index=True)
+        gdf['Area_M2'] = gdf['geometry'].apply(calculate_area_in_square_meters)
+        gdf['Rainfed'] = rainfed
+        gdf['Crop_Type'] = crop_type
+        gdf['Year'] = year
     return gdf
 
 def save_label_joblib(gdf, file_path='./data/joblibs/labels.joblib'):
@@ -58,17 +71,23 @@ def main():
     gdf = gdf.to_crs(crs='EPSG:4326')
     gdf['Area_M2'] = gdf['geometry'].apply(calculate_area_in_square_meters)
     
-    file_path_other = 'data/geojsons/other_gaziera_2021_75Km.geojson'
+    
+    # file_path_other = 'data/geojsons/other_gaziera_2021_75Km.geojson'
+    file_path_other = './data/joblibs/squares_81_45x45_gaizera.joblib'
+    # file_path_other = './data/joblibs/squares_2000_0.5x0.5_gaizera.joblib'
     update_labels_from_geojson = st.button(f'Update Labels from GeoJSON {file_path_other}')
     if update_labels_from_geojson:
-        gdf_other = update_label_joblib_from_geojson(file_path_other, 'gaziera_other')
+        state_name = file_path_other.split('/')[-1]
+        state_name = state_name[:-7]
+        gdf_other = update_label_joblib_from_file(
+            file_path=file_path_other,
+            state_name= state_name,
+            rainfed=-1,
+            crop_type='Other',
+            year=2023)
         gdf = gdf.append(gdf_other, ignore_index=True)
         save_label_joblib(gdf, './data/joblibs/labels.joblib')
         st.write('Labels Updated')
-
-    
-
-
 
     #Create a map with satellite imagery as the background
     m = folium.Map(location=[14.2, 33.2], zoom_start=8)
@@ -84,14 +103,11 @@ def main():
     if check_box:
         st_folium(m, width=1200, height=600)
     st.write(gdf.head())
-
-
-    #Select the one column to view
+    # Select the one column to view
     column_names = ['State', 'Rainfed', 'Year', 'Crop_Type']
     selected_column = st.selectbox('Select column to view', column_names)
     column_value_counts = get_column_value_counts(gdf, selected_column)
     st.table(column_value_counts)
-
     #select the columns to group by
     groupby_columns = ['State', 'Rainfed', 'Year', 'Crop_Type']
     selected_columns = st.multiselect('Select columns to group by', groupby_columns, default=['State', 'Rainfed'])

@@ -6,6 +6,7 @@ import shapely.geometry
 import folium
 import numpy as np
 import joblib
+from tqdm import tqdm
 
 
 
@@ -77,8 +78,6 @@ def get_square_list_for_state(gdf, max_width=25, max_height=25):
         new_xs_right = np.repeat(x_axis_max, len(new_ys))
         new_points_left = list(zip(new_ys, new_xs_left))
         new_points_right = list(zip(new_ys, new_xs_right))
-        # for left_point, right_point in zip(new_points_left, new_points_right):
-        #     folium.PolyLine([left_point, right_point], color='blue').add_to(m)
     height_ratio = height/max_height
     if height_ratio > 1:
         number_of_heights = np.ceil(height_ratio)
@@ -88,27 +87,38 @@ def get_square_list_for_state(gdf, max_width=25, max_height=25):
         new_ys_top = np.repeat(y_axis_max, len(new_xs))
         new_points_bottom = list(zip(new_ys_bottom, new_xs))
         new_points_top = list(zip(new_ys_top, new_xs))
-        # for bottom_point, top_point in zip(new_points_bottom, new_points_top):
-        #     folium.PolyLine([bottom_point, top_point], color='blue').add_to(m)
+
     intersection_rows = []
-    for x in new_xs:
-        intersection_points = []
-        for y in new_ys:
-            p = (y, x)
-            intersection_points.append(p)
-            # folium.CircleMarker(location=p, radius=1, color='red').add_to(m2)
-        intersection_rows.append(intersection_points)
-    new_squares = []
-    for row_index in range(len(intersection_rows)-1):
-        row = intersection_rows[row_index]
-        next_row = intersection_rows[row_index+1]
-        for point_index in range(len(row)-1):
-            point = row[point_index]
-            next_point = row[point_index+1]
-            next_row_point = next_row[point_index]
-            next_row_next_point = next_row[point_index+1]
-            square = [point, next_point, next_row_next_point, next_row_point]
-            new_squares.append(square)
+    i = 0
+    total = len(new_xs)
+    my_bar = st.progress(0)
+    with st.spinner('Calculating intersection points...'):
+        for x in tqdm(new_xs):
+            intersection_points = []
+            for y in new_ys:
+                p = (y, x)
+                intersection_points.append(p)
+            intersection_rows.append(intersection_points)
+            i += 1
+            my_bar.progress(i/total)
+
+
+    i = 0
+    total = len(intersection_rows)
+    with st.spinner('Getting squares...'):
+        new_squares = []
+        for row_index in tqdm(range(len(intersection_rows)-1)):
+            row = intersection_rows[row_index]
+            next_row = intersection_rows[row_index+1]
+            for point_index in range(len(row)-1):
+                point = row[point_index]
+                next_point = row[point_index+1]
+                next_row_point = next_row[point_index]
+                next_row_next_point = next_row[point_index+1]
+                square = [point, next_point, next_row_next_point, next_row_point]
+                new_squares.append(square)
+            i += 1
+            my_bar.progress(i/total)
     return new_squares
 
 
@@ -126,8 +136,8 @@ def main():
     gdf = states_gdf_from_geojson(file_path='./data/geojsons/sudan_states_gaziera.geojson')
     st.write(gdf)
     m = gdf.explore()
-    max_width = 25
-    max_height = 25
+    max_width = 0.06
+    max_height = 0.06
     new_squares = get_square_list_for_state(gdf, max_width=max_width, max_height=max_height)
     square_area = max_height * max_width
     number_of_squares = len(new_squares)
@@ -155,9 +165,9 @@ def main():
     gdf_sq['width'] = max_width
     gdf_sq['height'] = max_height
     st.write(gdf_sq)
-    m2 = gdf_sq.explore()
-    width, height, area, perimeter, state_bbox = get_bbox_info(gdf_sq, verbose=True)
-    st_folium(m2)
+    # m2 = gdf_sq.explore()
+    # width, height, area, perimeter, state_bbox = get_bbox_info(gdf_sq, verbose=True)
+    # st_folium(m2)
     
     file_name = f'./data/joblibs/squares_{target_number_of_squares}_{max_width}x{max_height}_gaizera.joblib'
     save_data_bool = st.button('Save Data')

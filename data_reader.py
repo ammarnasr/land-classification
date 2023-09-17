@@ -253,10 +253,10 @@ def get_bands_gdf(row, script='ALL'):
 
 
 
-def get_training_data_evalscript(location='gaziera', evalscript='ALL'):
+def get_training_data_evalscript(location='gaziera', evalscript='ALL', dates=None, year='2021'):
     data_dir = 'data/training_data/'
     os.makedirs(data_dir, exist_ok=True)
-    final_dir = data_dir + location + '/'
+    final_dir = data_dir + location+ '_'+ year + '/'
     os.makedirs(final_dir, exist_ok=True)
     filename = final_dir + 'training_data_' + evalscript + '.pkl'
     if os.path.exists(filename):
@@ -266,6 +266,8 @@ def get_training_data_evalscript(location='gaziera', evalscript='ALL'):
         downloaded_data = get_available_data_dataframe()
         downloaded_data = downloaded_data[downloaded_data['evalscript'] == evalscript]
         downloaded_data = downloaded_data[downloaded_data['location'] == location]
+        if dates is not None:
+            downloaded_data = downloaded_data[downloaded_data['date'].isin(dates)]
         st.write(f'Final Dataframe for {evalscript} in {location}')
         st.write(downloaded_data)
         total_images = len(downloaded_data.index)
@@ -283,21 +285,36 @@ def main():
     st.write("Data Reader")
     st.write("Getting Available Data")
     downloaded_data = get_available_data_dataframe()
+    all_locations = downloaded_data['location'].values
+    wanted_locations_indices = []
+    for i in range(len(all_locations)):
+        loc = all_locations[i]
+        if loc.startswith('gaizera_square_45X45_'):
+            wanted_locations_indices.append(i)
+    downloaded_data = downloaded_data.iloc[wanted_locations_indices]
     st.write(downloaded_data)
+    year ='2023'
+    dates = [
+        f'{year}-06-01',
+        f'{year}-07-16',
+        f'{year}-08-15',
+        f'{year}-09-09',
+    ]
     # st.write("Getting Training Data")
-    # training_data = get_training_data_evalscript(location='gaziera', evalscript='ALL')
+    # training_data = get_training_data_evalscript(location='gaizera_square_45X45_10', evalscript='ALL', dates=dates, year=year)
+    # st.write('Training Data')
     # st.write(training_data)
     # st.write("Getting Training Data FCOVER")
-    # training_data_FCOVER = get_training_data_evalscript(location='gaziera', evalscript='FCOVER')
+    # training_data_FCOVER = get_training_data_evalscript(location='Gaziera', evalscript='FCOVER', dates=dates, year=year)
     # st.write(training_data_FCOVER)
 
-    #Training Data for gaziera_other_1, gaziera_other_2, gaziera_other_3 ... gaziera_other_16
-    for i in range(1, 17):
-        location = f'gaziera_other_{i}'
+    # Training Data for gaizera_square_45X45_0, gaizera_square_45X45_1, ... gaziera_square_45X45_80
+    for i in range(81):
+        location = f'gaizera_square_45X45_{i}'
         st.write(f'Getting Training Data for {location}')
-        training_data = get_training_data_evalscript(location=location, evalscript='ALL')
+        training_data = get_training_data_evalscript(location=location, evalscript='ALL', dates=dates, year=year)
         st.write(f'Getting Training Data for {location} FCOVER')
-        training_data_FCOVER = get_training_data_evalscript(location=location, evalscript='FCOVER')
+        training_data_FCOVER = get_training_data_evalscript(location=location, evalscript='FCOVER', dates=dates, year=year)
 
 
 
