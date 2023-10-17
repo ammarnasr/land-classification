@@ -1,4 +1,4 @@
-# Mesuring the Effects of War on Land Cultivation in Sudan 2023 Through Remote Sensing
+![cover](samples/cover.png)
 
 This repository contains our current work for the Cultivated land Mappping, where we have developed a cultivated vs uncultivated classifier solution using machine learning techniques and remote sensing data. This README.md file provides an overview of my project and how to use the code.
 
