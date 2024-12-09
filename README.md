@@ -11,7 +11,7 @@ In this project, we aim to create accurate and cost-effective classification mod
 My code in this repository performs the following tasks:
 
 1. **Data Retrieval**: I fetch Sentinel-2 LA satellite data for the required regions.
-2. **Region Masking**: I apply region-specific masks to focus on Sudan, Iran, and Afghanistan.
+2. **Region Masking**: I apply region-specific masks to focus on Sudan.
 3. **Training**: I train a stacked classifier for cropland extent mapping.
 4. **Inference**: I generate cropland extent maps for the target regions using the trained model.
 
