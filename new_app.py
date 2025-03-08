@@ -10,13 +10,19 @@ from streamlit_folium import st_folium
 from senHub import SenHub
 from sentinelhub import SHConfig
 from sentinelhub import MimeType
+import rioxarray as rx
+
+SATELLITE_DIR = './data/satellite_images'
+PROCESSED_DIR = './data/processed'
+CURATED_DIR   = './data/curated'
 
 
 def get_sentinelhub_api_config():
     config = SHConfig()
-    config.instance_id       = 'a2624765-c205-4c43-9ad0-ef0c412e4ecc'   
-    config.sh_client_id      = '281a304c-4b24-4834-88a9-67716cb53b5f' 
-    config.sh_client_secret  = '->i.[t4J@Qo/-m#O+O@oyiJJG9f?d:GOHYOh[C^K'
+    config.instance_id = st.secrets["instance_id"]
+    config.sh_client_id = st.secrets["sh_client_id"]
+    config.sh_client_secret = st.secrets["sh_client_secret"]
+
     return config
 
 
@@ -55,21 +61,14 @@ def get_available_dates_from_sentinelhub(polygon, year='2023'):
     return dates
 
 
-def get_final_dir(location_name, date, evalscript):
-    data_dir = './data/satellite_images'
-    os.makedirs(data_dir, exist_ok=True)
-    target_date_dir = os.path.join(data_dir, date)
-    os.makedirs(target_date_dir, exist_ok=True)
-    location_dir = os.path.join(target_date_dir, location_name)
-    os.makedirs(location_dir, exist_ok=True)
-    evalscript_dir = os.path.join(location_dir, evalscript)
-    os.makedirs(evalscript_dir, exist_ok=True)
-    final_dir = evalscript_dir
+def get_satellite_image_dir(location_name, date, evalscript):
+    final_dir = os.path.join(SATELLITE_DIR, location_name, evalscript, date)
+    os.makedirs(final_dir, exist_ok=True)
     return final_dir
 
 
 def get_true_color_image_from_sentinelhub(polygon, date, location='unknown'):
-    final_dir = get_final_dir(location, date, 'TRUECOLOR')
+    final_dir = get_satellite_image_dir(location, date, 'TRUECOLOR')
     bbox = get_bounds_of_polygon(polygon)
     evalscript_true_color = new_utils.get_sentinelhub_api_evalscript('TRUECOLOR')
     config = get_sentinelhub_api_config()
@@ -81,7 +80,7 @@ def get_true_color_image_from_sentinelhub(polygon, date, location='unknown'):
     return imgs[0], final_dir
 
 def get_fcover_image_from_sentinelhub(polygon, date, location='unknown'):
-    final_dir = get_final_dir(location, date, 'FCOVER')
+    final_dir = get_satellite_image_dir(location, date, 'FCOVER')
     bbox = get_bounds_of_polygon(polygon)
     evalscript_fcover = new_utils.get_sentinelhub_api_evalscript('FCOVER')
     config = get_sentinelhub_api_config()
@@ -93,7 +92,7 @@ def get_fcover_image_from_sentinelhub(polygon, date, location='unknown'):
     return imgs[0], final_dir
 
 def get_cloud_coverage_from_sentinelhub(polygon, date, location='unknown'):
-    final_dir = get_final_dir(location, date, 'CLP')
+    final_dir = get_satellite_image_dir(location, date, 'CLP')
     bbox = get_bounds_of_polygon(polygon)
     evalscript_cloud_coverage = new_utils.get_sentinelhub_api_evalscript('CLP')
     config = get_sentinelhub_api_config()
@@ -105,7 +104,7 @@ def get_cloud_coverage_from_sentinelhub(polygon, date, location='unknown'):
     return imgs[0], final_dir
 
 def get_ndvi_image_from_sentinelhub(polygon, date, location='unknown'):
-    final_dir = get_final_dir(location, date, 'NDVI')
+    final_dir = get_satellite_image_dir(location, date, 'NDVI')
     bbox = get_bounds_of_polygon(polygon)
     evalscript_ndvi = new_utils.get_sentinelhub_api_evalscript('NDVI')
     config = get_sentinelhub_api_config()
@@ -117,7 +116,7 @@ def get_ndvi_image_from_sentinelhub(polygon, date, location='unknown'):
     return imgs[0], final_dir
 
 def get_all_bands_image_from_sentinelhub(polygon, date, location='unknown'):
-    final_dir = get_final_dir(location, date, 'ALL')
+    final_dir = get_satellite_image_dir(location, date, 'ALL')
     bbox = get_bounds_of_polygon(polygon)
     evalscript_all = new_utils.get_sentinelhub_api_evalscript('ALL')
     config = get_sentinelhub_api_config()
@@ -188,6 +187,71 @@ def process_years(image_names_years_dict, years):
 
 
 
+def get_masked_location_img_path(location_name: str, date: str, evalscript: str) -> str:
+    """Construct and return the full file path to a masked image for a given location, date, and evalscript."""
+    file_path = os.path.join(PROCESSED_DIR,location_name, evalscript, date, "masked.tiff")
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"Masked image file does not exist: {file_path}")
+    return file_path
+
+
+def get_response_tiff_path(location_name: str, date: str, evalscript: str) -> str:
+    """Retrieve the full file path to 'response.tiff' based on a location and date."""
+    base_dir = get_satellite_image_dir(location_name=location_name, date=date, evalscript=evalscript)
+    if not os.path.isdir(base_dir):
+        raise FileNotFoundError(f"Base directory '{base_dir}' does not exist.")
+    sub_dirs = [d for d in os.listdir(base_dir) if os.path.isdir(os.path.join(base_dir, d))]
+    if len(sub_dirs) != 1:
+        raise ValueError(f"Expected exactly one subdirectory in '{base_dir}', but found {len(sub_dirs)}: {sub_dirs}")
+    sub_dir_path = os.path.join(base_dir, sub_dirs[0])
+    files = os.listdir(sub_dir_path)
+    if "response.tiff" not in files:
+        raise FileNotFoundError(f"'response.tiff' not found in '{sub_dir_path}'. Available files: {files}")
+    response_tiff_path = os.path.join(sub_dir_path, "response.tiff")
+    return response_tiff_path
+
+
+
+def mask_downloaded_image(mask_gdf, location_name, date, evalscript):
+    """Clips a downloaded TIFF image using a provided mask and saves the result."""
+    # Get the path of the downloaded TIFF image
+    download_path = get_response_tiff_path(location_name=location_name, date=date, evalscript=evalscript)
+    # Open the image using rioxarray
+    image = rx.open_rasterio(download_path)
+    # Extract geometry and CRS from the mask
+    geom, crs = mask_gdf.geometry, mask_gdf.crs
+    # Clip the image using the mask
+    clipped = image.rio.clip(geom, crs, drop=True)
+    # Define save directory and file path
+    save_dir_path = os.path.join(PROCESSED_DIR, location_name, evalscript, date)
+    os.makedirs(save_dir_path, exist_ok=True)  # Ensure the directory exists
+    save_tiff_path = os.path.join(save_dir_path, 'masked.tiff')
+    # Save the clipped raster
+    clipped.rio.to_raster(save_tiff_path)
+    return save_tiff_path
+
+
+
+
+def convert_mask_image_to_gdf(location_name, date, evalscript, crs):
+    """Converts a masked image to a GeoDataFrame and saves it as a GeoJSON file."""
+    # Get the image path
+    image_path = get_masked_location_img_path(location_name=location_name, date=date, evalscript=evalscript)
+    # Open the image using rioxarray
+    im = rx.open_rasterio(image_path)
+    # Convert TIFF to GeoDataFrame
+    gdf = new_utils.tiff_to_gdf(im, evalscript, date, crs)
+    # Add metadata columns
+    gdf["location_name"] = location_name
+    gdf["date"] = date
+    gdf["evalscript"] = evalscript
+    # Define save directory and file path
+    save_dir_path = os.path.join(CURATED_DIR, location_name, evalscript, date)
+    os.makedirs(save_dir_path, exist_ok=True)  # Ensure the directory exists
+    save_geojson_path = os.path.join(save_dir_path, 'masked.geojson')
+    # Save the GeoDataFrame to GeoJSON
+    gdf.to_file(save_geojson_path, driver='GeoJSON')
+    return save_geojson_path
 
 
 
