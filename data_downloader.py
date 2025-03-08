@@ -12,6 +12,14 @@ import matplotlib.pyplot as plt
 import pickle
 import os
 
+
+def get_total_polygon_from_gdf(gdf):
+    total_bounds = gdf.total_bounds
+    total_polygon = shapely.geometry.box(*total_bounds, ccw=True)
+    return total_polygon
+
+
+
 def load_data():
     file_path = './data/joblibs/labels.joblib'
     gdf = joblib.load(file_path)
@@ -105,7 +113,7 @@ def get_bbox_info(gdf):
     return width, height, area, perimeter, gdf_bbox 
 
 
-def get_avilable_dates(gdf, year):
+def get_available_dates(gdf, year):
     total_bounds = gdf.total_bounds
     total_polygon = shapely.geometry.box(*total_bounds, ccw=True)
     dates = new_app.get_available_dates_from_sentinelhub(total_polygon, year=year)
@@ -113,23 +121,45 @@ def get_avilable_dates(gdf, year):
 
 
 def dates_close_to_target_date(dates, target_date):
-    '''
-    Find dates that are close to the target date within a 15 day window moving forward and backward in time
-    '''
-    target_date = datetime.datetime.strptime(target_date, '%Y-%m-%d')
-    dates = [datetime.datetime.strptime(date, '%Y-%m-%d') for date in dates]
-    dates = [date for date in dates if date.year == target_date.year]
-    dates = [date for date in dates if date.month == target_date.month]
-    dates = [date for date in dates if date.day >= target_date.day - 15]
-    dates = [date for date in dates if date.day <= target_date.day + 15]
-    dates = [date.strftime('%Y-%m-%d') for date in dates]
-    return dates
-
+    """
+    Find dates that are within a 15-day window (before or after) of the target date.
+    Returns a list of date strings sorted by closeness to the target date,
+    with the closest date at index 0.
+    
+    Parameters:
+      dates (list of str): List of dates in 'YYYY-MM-DD' format.
+      target_date (str): The target date in 'YYYY-MM-DD' format.
+      
+    Returns:
+      list of str: Dates within +/-15 days of the target date, sorted by closeness.
+    """
+    # Convert target_date to a datetime object
+    target_date_obj = datetime.datetime.strptime(target_date, '%Y-%m-%d')
+    
+    # Convert input dates to datetime objects and filter those within 15 days
+    valid_dates = []
+    for date_str in dates:
+        try:
+            date_obj = datetime.datetime.strptime(date_str, '%Y-%m-%d')
+        except ValueError:
+            # Skip dates that do not match the format
+            continue
+        
+        # Calculate the absolute difference in days
+        day_diff = abs((date_obj - target_date_obj).days)
+        if day_diff <= 15:
+            valid_dates.append((date_obj, day_diff))
+    
+    # Sort dates by the computed day difference (closeness)
+    valid_dates.sort(key=lambda x: x[1])
+    
+    # Return the sorted dates in 'YYYY-MM-DD' format
+    return [date_obj.strftime('%Y-%m-%d') for date_obj, diff in valid_dates]
 
 def date_selection_logic(gdf):
     d = st.date_input("Select Imagery Capture Date", datetime.date(2021, 7, 6))
     st.write('The Selected Date is:', d)
-    dates = get_avilable_dates(gdf, d.year)
+    dates = get_available_dates(gdf, d.year)
     dates = dates_close_to_target_date(dates, str(d))
     st.write(f'Closest Dates: {dates}')
     date = st.selectbox('Select Date', dates, index=0)
@@ -205,14 +235,14 @@ def download_preselected_dates_images_logic(total_polygon, location_name, year='
 
 def plot_cloud_coverage_averages_through_time(polygon, location_name, gdf, year='2022'):
     saved_path = f'./avg_cloud_coverage/{location_name}_avg_cloud_coverage_{year}.pickle'
-    dates = get_avilable_dates(gdf, year)
+    dates = get_available_dates(gdf, year)
     if os.path.exists(saved_path):
         st.write('Loading Cloud Coverage Averages Through Time')
         with open(saved_path, 'rb') as f:
             clp_averages = pickle.load(f)
     else:
         st.write('Calculating Cloud Coverage Averages Through Time')
-        dates = get_avilable_dates(gdf, year)
+        dates = get_available_dates(gdf, year)
         num_dates = len(dates)
         clp_averages = []
         my_bar = st.progress(0)
@@ -287,11 +317,13 @@ def cloud_coverage_averages_through_time_logic(total_polygon, location_name, gdf
         return plot_cloud_coverage_averages_through_time(total_polygon, location_name, gdf)
 
 
-
 def calculate_area_in_square_meters(geometry):
     geod = Geod(ellps="WGS84")
     area = abs(geod.geometry_area_perimeter(geometry)[0])
     return area
+
+
+
 def states_gdf_from_geojson(file_path = './data/geojsons/sudan_states.geojson'):
     gdf = gpd.read_file(file_path)
     gdf = gdf.to_crs(crs='EPSG:4326')
@@ -299,6 +331,9 @@ def states_gdf_from_geojson(file_path = './data/geojsons/sudan_states.geojson'):
     gdf.rename(columns={'admin1RefN':'State'}, inplace=True)
     gdf = gdf[['State', 'Area_M2', 'geometry']]
     return gdf
+
+
+
 def seq_inside(gdf_sq):
     gdf = states_gdf_from_geojson(file_path='./data/geojsons/sudan_states_gaziera.geojson')
     withins = []
@@ -312,10 +347,12 @@ def seq_inside(gdf_sq):
             withins.append(0)
     return withins
 
+
 def add_state_to_map(m):
     gdf = states_gdf_from_geojson(file_path='./data/geojsons/sudan_states_gaziera.geojson')
     gdf.explore(m=m)
     return m
+
 
 def main():
     gdf = load_data()
