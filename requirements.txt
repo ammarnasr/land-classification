@@ -13,4 +13,5 @@ confuse
 plotly
 mapclassify
 streamlit
+joblib
 jsonlines
