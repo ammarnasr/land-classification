@@ -1,14 +1,8 @@
 ![cover](samples/cover.png)
 
-This repository contains our current work for the Cultivated land Mappping, where we have developed a cultivated vs uncultivated classifier solution using machine learning techniques and remote sensing data. This README.md file provides an overview of my project and how to use the code.
-
-## Project Overview
-
-In this project, we aim to create accurate and cost-effective classification models for cropland extent mapping with a spatial resolution of 10 meters. The project also involves testing the temporal extendibility of the proposed method at a local scale. The evaluation will be based on accuracy and will consider various aspects, including comparison with existing cropland maps and the novelty and practicality of the procedure.
 
 ## Code Structure
 
-My code in this repository performs the following tasks:
 
 1. **Data Retrieval**: I fetch Sentinel-2 LA satellite data for the required regions.
 2. **Region Masking**: I apply region-specific masks to focus on Sudan.
