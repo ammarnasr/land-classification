@@ -5,6 +5,9 @@ import requests
 import jsonlines as jsonl
 import glob
 from PIL import Image
+import numpy as np
+from shapely.geometry import Point
+
 
 
 def make_gif(frame_folder, gif_name):
@@ -274,3 +277,38 @@ def get_sentinelhub_api_evalscript(script_name):
         print(f'Script name must be one of the following: {keys}')
         return None
 
+
+
+
+def tiff_to_gdf(im, evalscript, date, crs):
+    '''
+    Convert a TIFF image to a GeoDataFrame, creating separate columns for each band.
+    '''
+    bands = im.coords['band'].values  # Get band indices
+    x_cords = im.coords['x'].values  # Get x coordinates
+    y_cords = im.coords['y'].values  # Get y coordinates
+    vals = im.values  # Extract values from the image array
+    dims = vals.shape  # (bands, height, width)
+    points = []
+    data = {f'band_{band}': [] for band in bands}  # Dictionary to store band data
+    for lat in range(dims[1]):  # Iterate over height
+        y = y_cords[lat]
+        for lon in range(dims[2]):  # Iterate over width
+            x = x_cords[lon]
+            v = vals[:, lat, lon]  # Extract values for all bands at this point
+            if np.isnan(v).all():  # Skip if all bands are NaN
+                continue
+            points.append(Point(x, y))  # Store point geometry
+            for i, band in enumerate(bands):
+                data[f'band_{band}'].append(v[i])  # Store value for each band
+    # Add geometry to the data dictionary
+    data['geometry'] = points  
+    # Create GeoDataFrame
+    df = gpd.GeoDataFrame(data, crs=crs)
+    return df
+
+
+def gdf_from_geojson(geojson_path, crs):
+    gdf = gpd.read_file(filename=geojson_path)
+    gdf.crs = crs
+    return gdf
