@@ -1,21 +1,17 @@
-# Geospatial Libraries
-geopandas==0.13.2         # Works well with pandas 1.5.x
-pandas==1.5.3             # Latest 1.x release (pandas<2.0.0)
-pyproj==3.6.1
-shapely==1.8.5.post1       # Compatible with geopandas 0.13.2
-rioxarray==0.14.2
-mapclassify==2.4.0
-
-# Visualization and UI
-folium==0.14.0
-matplotlib==3.6.3
-plotly==5.15.0
-streamlit-folium==0.1.9
-streamlit==1.24.1
-
-# Utilities and Other
-inotify==2.1.7
-joblib==1.3.0             # Removed duplicate
-sentinelhub==3.7.1
-confuse==1.5.0
-jsonlines==3.0.0
+streamlit
+geopandas
+pandas
+folium
+matplotlib
+pyproj
+shapely
+streamlit-folium
+inotify
+joblib
+sentinelhub
+rioxarray
+confuse
+plotly
+mapclassify
+joblib
+jsonlines
