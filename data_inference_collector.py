@@ -8,8 +8,6 @@ import numpy as np
 import joblib
 from tqdm import tqdm
 
-
-
 def calculate_area_in_square_meters(geometry):
     geod = Geod(ellps="WGS84")
     area = abs(geod.geometry_area_perimeter(geometry)[0])
