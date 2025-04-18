@@ -1,5 +1,6 @@
 import streamlit as st
 import new_utils
+import dates_utils
 import numpy as np
 import pandas as pd
 import geopandas as gpd
@@ -22,7 +23,6 @@ def get_sentinelhub_api_config():
     config.instance_id = st.secrets["instance_id"]
     config.sh_client_id = st.secrets["sh_client_id"]
     config.sh_client_secret = st.secrets["sh_client_secret"]
-
     return config
 
 
@@ -57,7 +57,7 @@ def get_available_dates_from_sentinelhub(polygon, year='2023'):
     token = get_sentinelhub_api_token()
     start_date = f'{year}-01-01'
     end_date = f'{year}-12-31'
-    dates = new_utils.get_available_dates_from_sentinelhub(bounds, token, start_date, end_date)
+    dates = dates_utils.get_available_dates_from_sentinelhub(bounds, token, start_date, end_date)
     return dates
 
 
@@ -141,6 +141,42 @@ def get_any_image_from_sentinelhub(polygon, date, evalscript, location='unknown'
     else:
         return None, None
     
+    
+import time
+# import traceback
+def get_any_image_from_sentinelhub(polygon, date, evalscript, location='unknown', num_retries=3):
+    attempt = 1
+    backoff = 1  # starting backoff time in seconds
+
+    while attempt <= num_retries:
+        try:
+            if evalscript == 'TRUECOLOR':
+                return get_true_color_image_from_sentinelhub(polygon, date, location)
+            elif evalscript == 'FCOVER':
+                return get_fcover_image_from_sentinelhub(polygon, date, location)
+            elif evalscript == 'CLP':
+                return get_cloud_coverage_from_sentinelhub(polygon, date, location)
+            elif evalscript == 'ALL':
+                return get_all_bands_image_from_sentinelhub(polygon, date, location)
+            elif evalscript == 'NDVI':
+                return get_ndvi_image_from_sentinelhub(polygon, date, location)
+            else:
+                # If no valid evalscript is provided, we exit.
+                print("Error: Invalid evalscript provided.")
+                return None, None
+        except Exception as e:
+            print(f"Attempt {attempt} failed with error: {e}")
+            # Optionally print the stack trace for debugging:
+            # traceback.print_exc()
+            if attempt == num_retries:
+                print("All retries have been exhausted.")
+                raise  # Reraise the exception after final attempt
+            else:
+                print(f"Retrying after {backoff} seconds...")
+                time.sleep(backoff)
+                backoff *= 2  # Exponential backoff
+                attempt += 1
+
 
 def display_true_color_image(image, image_save_path=None):
     factor = 3.5/255

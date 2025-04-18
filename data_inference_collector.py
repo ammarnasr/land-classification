@@ -30,9 +30,6 @@ def filter_by_state(gdf, state_name='El Gazira'):
 def save_gdf_to_geojson(gdf, file_path='./data/geojsons/sudan_states_2.geojson'):
     gdf.to_file(file_path, driver='GeoJSON')
 
-
-
-
 def get_bbox_info(gdf, verbose=False):
     geod = Geod(ellps="WGS84")
     bbox = gdf.total_bounds
@@ -119,7 +116,6 @@ def get_square_list_for_state(gdf, max_width=25, max_height=25):
             my_bar.progress(i/total)
     return new_squares
 
-
 def convert_square_to_polygon(square):
     new_points = []
     for point in square:
@@ -128,7 +124,6 @@ def convert_square_to_polygon(square):
     new_points.append(new_points[0])
     polygon = shapely.geometry.Polygon(new_points)
     return polygon
-
 
 def main():
     gdf = states_gdf_from_geojson(file_path='./data/geojsons/sudan_states_gaziera.geojson')

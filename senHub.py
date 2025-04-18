@@ -8,6 +8,29 @@ from sentinelhub import (
 )
 from oauthlib.oauth2 import BackendApplicationClient
 from requests_oauthlib import OAuth2Session
+from sentinelhub import SHConfig
+import os
+from dotenv import load_dotenv
+import streamlit as st
+load_dotenv()
+
+
+# def get_sentinelhub_api_config():
+#     config = SHConfig()
+#     config.instance_id = os.getenv("instance_id")
+#     config.sh_client_id = os.getenv("sh_client_id")
+#     config.sh_client_secret = os.getenv("sh_client_secret")
+#     return config
+
+
+def get_sentinelhub_api_config():
+    config = SHConfig()
+    config.instance_id = st.secrets["instance_id"]
+    config.sh_client_id = st.secrets["sh_client_id"]
+    config.sh_client_secret = st.secrets["sh_client_secret"]
+    return config
+
+
 
 class SenHub:
     ''' 
