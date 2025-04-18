@@ -19,7 +19,9 @@ from dotenv import load_dotenv
 load_dotenv()  # take environment variables from .env.
 
 
-SATELLITE_DIR = './data/satellite_images'
+# SATELLITE_DIR = './data/satellite_images'
+SATELLITE_DIR = '/content/drive/MyDrive/Ammar Inference BIG SQUARES'
+
 PROCESSED_DIR = './data/processed'
 CURATED_DIR   = './data/curated'
 
