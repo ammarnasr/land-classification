@@ -13,16 +13,28 @@ from sentinelhub import SHConfig
 from sentinelhub import MimeType
 import rioxarray as rx
 
+import os
+from dotenv import load_dotenv
+
+load_dotenv()  # take environment variables from .env.
+
+
 SATELLITE_DIR = './data/satellite_images'
 PROCESSED_DIR = './data/processed'
 CURATED_DIR   = './data/curated'
 
 
-def get_sentinelhub_api_config():
-    config = SHConfig()
-    config.instance_id = st.secrets["instance_id"]
-    config.sh_client_id = st.secrets["sh_client_id"]
-    config.sh_client_secret = st.secrets["sh_client_secret"]
+def get_sentinelhub_api_config(use_st=False):
+    if use_st:
+        config = SHConfig()
+        config.instance_id = st.secrets["instance_id"]
+        config.sh_client_id = st.secrets["sh_client_id"]
+        config.sh_client_secret = st.secrets["sh_client_secret"]
+    else:
+        config = SHConfig()
+        config.instance_id = os.getenv("INSTANCE_ID")
+        config.sh_client_id = os.getenv("SH_CLIENT_ID")
+        config.sh_client_secret = os.getenv("SH_CLIENT_SECRET")
     return config
 
 
