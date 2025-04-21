@@ -20,10 +20,12 @@ load_dotenv()  # take environment variables from .env.
 
 
 # SATELLITE_DIR = './data/satellite_images'
-SATELLITE_DIR = '/content/drive/MyDrive/Ammar Inference BIG SQUARES'
+# PROCESSED_DIR = './data/processed'
+# CURATED_DIR   = './data/curated'
 
-PROCESSED_DIR = './data/processed'
-CURATED_DIR   = './data/curated'
+SATELLITE_DIR = '/content/drive/MyDrive/Ammar Inference BIG SQUARES'
+PROCESSED_DIR = '/content/drive/MyDrive/Ammar Training/processed'
+CURATED_DIR   = '/content/drive/MyDrive/Ammar Training/curated'
 
 
 def get_sentinelhub_api_config(use_st=False):
