@@ -270,16 +270,19 @@ def mask_downloaded_image(mask_gdf, location_name, date, evalscript):
     download_path = get_response_tiff_path(location_name=location_name, date=date, evalscript=evalscript)
     # Open the image using rioxarray
     image = rx.open_rasterio(download_path)
-    # Extract geometry and CRS from the mask
-    geom, crs = mask_gdf.geometry, mask_gdf.crs
-    # Clip the image using the mask
-    clipped = image.rio.clip(geom, crs, drop=True)
     # Define save directory and file path
     save_dir_path = os.path.join(PROCESSED_DIR, location_name, evalscript, date)
     os.makedirs(save_dir_path, exist_ok=True)  # Ensure the directory exists
     save_tiff_path = os.path.join(save_dir_path, 'masked.tiff')
-    # Save the clipped raster
-    clipped.rio.to_raster(save_tiff_path)
+    if mask_gdf:
+        # Extract geometry and CRS from the mask
+        geom, crs = mask_gdf.geometry, mask_gdf.crs
+        # Clip the image using the mask
+        clipped = image.rio.clip(geom, crs, drop=True)
+        # Save the clipped raster
+        clipped.rio.to_raster(save_tiff_path)
+    else:
+        image.rio.to_raster(save_tiff_path)
     return save_tiff_path
 
 
