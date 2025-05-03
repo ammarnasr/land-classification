@@ -44,32 +44,48 @@ def concat_gdfs(gdfs, axis=0):
     gdf = gpd.GeoDataFrame(gdf, crs=crs)
     return gdf
 
-def tiff_to_gdf(im, evalscript, date, crs):
+
+def tiff_to_gdf(im, crs):
     '''
-    Convert a TIFF image to a GeoDataFrame, creating separate columns for each band.
+    Convert a TIFF image (xarray DataArray) to a GeoDataFrame efficiently,
+    creating separate columns for each band.
+
+    Args:
+        im (xr.DataArray): The input TIFF image as an xarray DataArray
+                          with 'band', 'x', and 'y' coordinates.
+        crs: The Coordinate Reference System for the GeoDataFrame.
+
+    Returns:
+        gpd.GeoDataFrame: The resulting GeoDataFrame.
     '''
-    bands = im.coords['band'].values  # Get band indices
-    x_cords = im.coords['x'].values  # Get x coordinates
-    y_cords = im.coords['y'].values  # Get y coordinates
-    vals = im.values  # Extract values from the image array
-    dims = vals.shape  # (bands, height, width)
-    points = []
-    data = {f'band_{band}': [] for band in bands}  # Dictionary to store band data
-    for lat in range(dims[1]):  # Iterate over height
-        y = y_cords[lat]
-        for lon in range(dims[2]):  # Iterate over width
-            x = x_cords[lon]
-            v = vals[:, lat, lon]  # Extract values for all bands at this point
-            if np.isnan(v).all():  # Skip if all bands are NaN
-                continue
-            points.append(Point(x, y))  # Store point geometry
-            for i, band in enumerate(bands):
-                data[f'band_{band}'].append(v[i])  # Store value for each band
-    # Add geometry to the data dictionary
-    data['geometry'] = points  
-    # Create GeoDataFrame
-    df = gpd.GeoDataFrame(data, crs=crs)
-    return df
+    # Convert the xarray DataArray to a pandas DataFrame
+    # This flattens the 'x' and 'y' dimensions and keeps bands as columns
+    df = im.to_dataframe(name='value').reset_index()
+
+    # Pivot the DataFrame to have bands as separate columns
+    # The 'value' column from to_dataframe contains the pixel values
+    df_pivot = df.pivot_table(index=['y', 'x'], columns='band', values='value')
+    df_pivot = df_pivot.reset_index() # Reset index to make 'y' and 'x' columns again
+
+    # Rename columns to a more user-friendly format (e.g., band_0, band_1, ...)
+    band_names = [f'band_{band}' for band in im.coords['band'].values]
+    df_pivot.columns = ['y', 'x'] + band_names
+
+    # Drop rows where all band values are NaN
+    df_pivot.dropna(subset=band_names, how='all', inplace=True)
+
+    # Create Point geometries from 'x' and 'y' columns
+    geometry = gpd.points_from_xy(df_pivot['x'], df_pivot['y'])
+
+    # Create the GeoDataFrame
+    gdf = gpd.GeoDataFrame(df_pivot, geometry=geometry, crs=crs)
+
+    # Drop the separate 'x' and 'y' columns as they are now in the geometry
+    gdf = gdf.drop(columns=['x', 'y'])
+
+    return gdf
+
+
 
 def gdf_from_geojson(geojson_path, crs):
     gdf = gpd.read_file(filename=geojson_path)
