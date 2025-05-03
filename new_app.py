@@ -264,7 +264,7 @@ def get_response_tiff_path(location_name: str, date: str, evalscript: str) -> st
 
 
 
-def mask_downloaded_image(mask_gdf, location_name, date, evalscript):
+def mask_downloaded_image(mask_gdf, location_name, date, evalscript, full_mask=False):
     """Clips a downloaded TIFF image using a provided mask and saves the result."""
     # Get the path of the downloaded TIFF image
     download_path = get_response_tiff_path(location_name=location_name, date=date, evalscript=evalscript)
@@ -274,7 +274,7 @@ def mask_downloaded_image(mask_gdf, location_name, date, evalscript):
     save_dir_path = os.path.join(PROCESSED_DIR, location_name, evalscript, date)
     os.makedirs(save_dir_path, exist_ok=True)  # Ensure the directory exists
     save_tiff_path = os.path.join(save_dir_path, 'masked.tiff')
-    if mask_gdf:
+    if not full_mask:
         # Extract geometry and CRS from the mask
         geom, crs = mask_gdf.geometry, mask_gdf.crs
         # Clip the image using the mask
