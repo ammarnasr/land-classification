@@ -295,7 +295,7 @@ def convert_mask_image_to_gdf(location_name, date, evalscript, crs):
     # Open the image using rioxarray
     im = rx.open_rasterio(image_path)
     # Convert TIFF to GeoDataFrame
-    gdf = new_utils.tiff_to_gdf(im, evalscript, date, crs)
+    gdf = new_utils.tiff_to_gdf(im, crs)
     # Add metadata columns
     gdf["location_name"] = location_name
     gdf["date"] = date
