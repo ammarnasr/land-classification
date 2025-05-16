@@ -60,7 +60,7 @@ class SenHub:
 
     def set_token(self):
         '''
-        Fetch Tooken from sentinelhub api to be used for available dates 
+        Fetch Token from sentinelhub api to be used for available dates 
         '''
         client_id = self.config.sh_client_id
         client_secret = self.config.sh_client_secret
@@ -69,11 +69,43 @@ class SenHub:
         token = oauth.fetch_token(token_url='https://services.sentinel-hub.com/oauth/token',client_secret=client_secret)
         self.token =  token['access_token']
 
-    def get_input_data(self, date):
+    def get_input_data(self, date, search_window_days=10):
         '''
-        Wrap input_data to provide to the sentinelhub API
+        Wrap input_data to provide to the sentinelhub API, searching for the least cloudy image
+        within a specified window, ensuring the window stays within the target month.
         '''
-        return SentinelHubRequest.input_data(data_collection=self.data_source, time_interval=(date, date))
+        from datetime import timedelta, date as date_obj
+        import datetime
+
+        if isinstance(date, str):
+            target_date = datetime.datetime.strptime(date, "%Y-%m-%d").date()
+        else:
+            target_date = date
+
+        year = target_date.year
+        month = target_date.month
+
+        first_day_of_month = date_obj(year, month, 1)
+        if month == 12:
+            last_day_of_month = date_obj(year, month, 31)
+        else:
+            last_day_of_month = date_obj(year, month + 1, 1) - timedelta(days=1)
+
+        start_offset = timedelta(days=search_window_days)
+        end_offset = timedelta(days=search_window_days)
+
+        potential_start_date = target_date - start_offset
+        potential_end_date = target_date + end_offset
+
+        start_date = max(potential_start_date, first_day_of_month)
+        end_date = min(potential_end_date, last_day_of_month)
+
+
+        return SentinelHubRequest.input_data(
+            data_collection=self.data_source,
+            time_interval=(start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")),
+            mosaicking_order='leastCC'
+        )
 
     def get_output_data(self):
         '''
@@ -83,7 +115,7 @@ class SenHub:
         
     def set_dir(self, dir_path):
         '''
-        Set The Tragt Download Directory Path
+        Set The Target Download Directory Path
         '''
         self.dir_path = dir_path
 
@@ -94,11 +126,11 @@ class SenHub:
         self.bbox = BBox(bbox=bbox, crs=CRS.WGS84)
         self.bbox_size = bbox_to_dimensions(self.bbox, resolution=self.resolution)
                 
-    def make_request(self, metric, date):
+    def make_request(self, metric, date, search_window_days=10):
         '''
-        Setup the Sentinal Hub Request
+        Setup the Sentinel Hub Request, finding the least cloudy scene within a window.
         '''
-        input_data = self.get_input_data(date)
+        input_data = self.get_input_data(date, search_window_days)
         output_data = self.get_output_data()
         self.request = SentinelHubRequest(
             data_folder=self.dir_path,
@@ -108,13 +140,13 @@ class SenHub:
             bbox=self.bbox,
             size=self.bbox_size,
             config=self.config,
-            )
+        )
 
     def download_data(self, save=True , redownload=False):
         '''
         Make The Request and download the data
         '''
-        return self.request.get_data(save_data=save, redownload=redownload)
+        return self.request.get_data(save_data=save, redownload=redownload, max_threads=64)
 
 
 
