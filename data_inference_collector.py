@@ -1,6 +1,6 @@
-import streamlit as st
+# import streamlit as st
+# from streamlit_folium import st_folium
 import geopandas as gpd
-from streamlit_folium import st_folium
 from pyproj import Geod
 import shapely.geometry
 import folium
@@ -45,13 +45,6 @@ def get_bbox_info(gdf, verbose=False):
     gdf_bbox = gdf.total_bounds
     gdf_bbox_polygon = shapely.geometry.box(*gdf_bbox, ccw=True)
     gdf_bbox = [(gdf_bbox[1], gdf_bbox[0]), (gdf_bbox[3], gdf_bbox[2])]
-    if verbose:
-        st.write(f'Area of State: {area/1000000} km2')
-        st.write(f'Perimeter of State: {perimeter/1000} km')
-        st.write(f'Width of Bounding Box: {width/1000} km')
-        st.write(f'Height of Bounding Box: {height/1000} km')
-        st.write(f'Area of Bounding Box: {(calculate_area_in_square_meters(gdf_bbox_polygon))/1000000} km2')
-        st.write(f'Perimeter of Bounding Box: {(2 * (width + height))/1000} km')
     return width, height, area, perimeter, gdf_bbox 
 
 def get_square_list_for_state(gdf, max_width=25, max_height=25):
@@ -86,34 +79,29 @@ def get_square_list_for_state(gdf, max_width=25, max_height=25):
     intersection_rows = []
     i = 0
     total = len(new_xs)
-    my_bar = st.progress(0)
-    with st.spinner('Calculating intersection points...'):
-        for x in tqdm(new_xs):
-            intersection_points = []
-            for y in new_ys:
-                p = (y, x)
-                intersection_points.append(p)
-            intersection_rows.append(intersection_points)
-            i += 1
-            my_bar.progress(i/total)
+    for x in tqdm(new_xs):
+        intersection_points = []
+        for y in new_ys:
+            p = (y, x)
+            intersection_points.append(p)
+        intersection_rows.append(intersection_points)
+        i += 1
 
 
     i = 0
     total = len(intersection_rows)
-    with st.spinner('Getting squares...'):
-        new_squares = []
-        for row_index in tqdm(range(len(intersection_rows)-1)):
-            row = intersection_rows[row_index]
-            next_row = intersection_rows[row_index+1]
-            for point_index in range(len(row)-1):
-                point = row[point_index]
-                next_point = row[point_index+1]
-                next_row_point = next_row[point_index]
-                next_row_next_point = next_row[point_index+1]
-                square = [point, next_point, next_row_next_point, next_row_point]
-                new_squares.append(square)
-            i += 1
-            my_bar.progress(i/total)
+    new_squares = []
+    for row_index in tqdm(range(len(intersection_rows)-1)):
+        row = intersection_rows[row_index]
+        next_row = intersection_rows[row_index+1]
+        for point_index in range(len(row)-1):
+            point = row[point_index]
+            next_point = row[point_index+1]
+            next_row_point = next_row[point_index]
+            next_row_next_point = next_row[point_index+1]
+            square = [point, next_point, next_row_next_point, next_row_point]
+            new_squares.append(square)
+        i += 1
     return new_squares
 
 def convert_square_to_polygon(square):
@@ -127,7 +115,6 @@ def convert_square_to_polygon(square):
 
 def main():
     gdf = states_gdf_from_geojson(file_path='./data/geojsons/sudan_states_gaziera.geojson')
-    st.write(gdf)
     m = gdf.explore()
     max_width = 0.06
     max_height = 0.06
@@ -137,17 +124,13 @@ def main():
     #set np seed
     np_seed = 42
     np.random.seed(np_seed)
-    target_number_of_squares = st.slider('Select number of squares', 0, number_of_squares, 50)
+    target_number_of_squares =40
     random_indices = np.random.choice(number_of_squares, target_number_of_squares, replace=False)
     for index in random_indices:
         square = new_squares[index]
         folium.Polygon(square, color='blue').add_to(m)
     width, height, area, perimeter, state_bbox = get_bbox_info(gdf, verbose=True)
     folium.Rectangle(bounds=state_bbox, color='red').add_to(m)
-    st.write(f'Number of Selected Squares: {target_number_of_squares}')
-    st.write(f'Area of each square: {square_area} km2')
-    st.write(f'Total area of selected squares: {square_area * target_number_of_squares} km2')
-    st_folium(m)
     geom = [convert_square_to_polygon(square) for square in new_squares]
     gdf_sq = gpd.GeoDataFrame(geometry=geom)
     gdf_sq.crs = "EPSG:4326"
@@ -157,14 +140,9 @@ def main():
     gdf_sq['location'] = 'gaizera'
     gdf_sq['width'] = max_width
     gdf_sq['height'] = max_height
-    st.write(gdf_sq)
     # m2 = gdf_sq.explore()
     # width, height, area, perimeter, state_bbox = get_bbox_info(gdf_sq, verbose=True)
     # st_folium(m2)
     
     file_name = f'./data/joblibs/squares_{target_number_of_squares}_{max_width}x{max_height}_gaizera.joblib'
-    save_data_bool = st.button('Save Data')
-    if save_data_bool:
-        joblib.dump(gdf_sq, file_name)
-        st.write('Data Saved')
 
