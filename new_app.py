@@ -72,8 +72,12 @@ def get_available_dates_from_sentinelhub(polygon, year='2023'):
     bounds = get_bounds_of_polygon(polygon)
     token = get_sentinelhub_api_token()
     start_date = f'{year}-01-01'
+    mid_date = f'{year}-07-01'
     end_date = f'{year}-12-31'
-    dates = dates_utils.get_available_dates_from_sentinelhub(bounds, token, start_date, end_date)
+    dates_first_half = dates_utils.get_available_dates_from_sentinelhub(bounds, token, start_date, mid_date)
+    dates_second_half = dates_utils.get_available_dates_from_sentinelhub(bounds, token, mid_date, end_date)
+    dates = dates_first_half+dates_second_half
+    dates = list(set(dates))
     return dates
 
 
