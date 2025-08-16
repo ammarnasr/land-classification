@@ -28,6 +28,17 @@ PROCESSED_DIR = '/content/drive/MyDrive/Ammar Training/processed'
 CURATED_DIR   = '/content/drive/MyDrive/Ammar Training/curated'
 
 
+SEN_HUB_OBJ = None
+
+def get_sen_hub_obj():
+    if SEN_HUB_OBJ == None:
+        config = get_sentinelhub_api_config()
+        SEN_HUB_OBJ = SenHub(config, mime_type = MimeType.PNG)
+    return SEN_HUB_OBJ
+
+        
+
+
 def get_sentinelhub_api_config(use_st=False):
     if use_st:
         config = SHConfig()
@@ -91,75 +102,66 @@ def get_true_color_image_from_sentinelhub(polygon, date, location='unknown'):
     final_dir = get_satellite_image_dir(location, date, 'TRUECOLOR')
     bbox = get_bounds_of_polygon(polygon)
     evalscript_true_color = new_utils.get_sentinelhub_api_evalscript('TRUECOLOR')
-    config = get_sentinelhub_api_config()
-    sen_obj = SenHub(config, mime_type = MimeType.PNG)
-    sen_obj.set_dir(final_dir)
-    sen_obj.make_bbox(bbox)
-    sen_obj.make_request(evalscript_true_color, date)
-    imgs = sen_obj.download_data()
+    SEN_HUB_OBJ.set_dir(final_dir)
+    SEN_HUB_OBJ.make_bbox(bbox)
+    SEN_HUB_OBJ.make_request(evalscript_true_color, date)
+    imgs = SEN_HUB_OBJ.download_data()
     return imgs[0], final_dir
 
 def get_fcover_image_from_sentinelhub(polygon, date, location='unknown'):
     final_dir = get_satellite_image_dir(location, date, 'FCOVER')
     bbox = get_bounds_of_polygon(polygon)
     evalscript_fcover = new_utils.get_sentinelhub_api_evalscript('FCOVER')
-    config = get_sentinelhub_api_config()
-    sen_obj = SenHub(config)
-    sen_obj.set_dir(final_dir)
-    sen_obj.make_bbox(bbox)
-    sen_obj.make_request(evalscript_fcover, date)
-    imgs = sen_obj.download_data()
+    SEN_HUB_OBJ.set_dir(final_dir)
+    SEN_HUB_OBJ.make_bbox(bbox)
+    SEN_HUB_OBJ.make_request(evalscript_fcover, date)
+    imgs = SEN_HUB_OBJ.download_data()
     return imgs[0], final_dir
 
 def get_cloud_coverage_from_sentinelhub(polygon, date, location='unknown'):
     final_dir = get_satellite_image_dir(location, date, 'CLP')
     bbox = get_bounds_of_polygon(polygon)
     evalscript_cloud_coverage = new_utils.get_sentinelhub_api_evalscript('CLP')
-    config = get_sentinelhub_api_config()
-    sen_obj = SenHub(config)
-    sen_obj.set_dir(final_dir)
-    sen_obj.make_bbox(bbox)
-    sen_obj.make_request(evalscript_cloud_coverage, date)
-    imgs = sen_obj.download_data()
+    SEN_HUB_OBJ.set_dir(final_dir)
+    SEN_HUB_OBJ.make_bbox(bbox)
+    SEN_HUB_OBJ.make_request(evalscript_cloud_coverage, date)
+    imgs = SEN_HUB_OBJ.download_data()
     return imgs[0], final_dir
 
 def get_ndvi_image_from_sentinelhub(polygon, date, location='unknown'):
     final_dir = get_satellite_image_dir(location, date, 'NDVI')
     bbox = get_bounds_of_polygon(polygon)
     evalscript_ndvi = new_utils.get_sentinelhub_api_evalscript('NDVI')
-    config = get_sentinelhub_api_config()
-    sen_obj = SenHub(config)
-    sen_obj.set_dir(final_dir)
-    sen_obj.make_bbox(bbox)
-    sen_obj.make_request(evalscript_ndvi, date)
-    imgs = sen_obj.download_data()
+    SEN_HUB_OBJ.set_dir(final_dir)
+    SEN_HUB_OBJ.make_bbox(bbox)
+    SEN_HUB_OBJ.make_request(evalscript_ndvi, date)
+    imgs = SEN_HUB_OBJ.download_data()
     return imgs[0], final_dir
 
 def get_all_bands_image_from_sentinelhub(polygon, date, location='unknown'):
     final_dir = get_satellite_image_dir(location, date, 'ALL')
     bbox = get_bounds_of_polygon(polygon)
     evalscript_all = new_utils.get_sentinelhub_api_evalscript('ALL')
-    config = get_sentinelhub_api_config()
-    sen_obj = SenHub(config)
-    sen_obj.set_dir(final_dir)
-    sen_obj.make_bbox(bbox)
-    sen_obj.make_request(evalscript_all, date)
-    imgs = sen_obj.download_data()
+    SEN_HUB_OBJ.set_dir(final_dir)
+    SEN_HUB_OBJ.make_bbox(bbox)
+    SEN_HUB_OBJ.make_request(evalscript_all, date)
+    imgs = SEN_HUB_OBJ.download_data()
     return imgs[0], final_dir
 
 def get_any_image_from_sentinelhub(polygon, date, evalscript, location='unknown'):
     if evalscript == 'TRUECOLOR':
-        return get_true_color_image_from_sentinelhub(polygon, date, location)
+        get_true_color_image_from_sentinelhub(polygon, date, location)
     elif evalscript == 'FCOVER':
-        return get_fcover_image_from_sentinelhub(polygon, date, location)
+        get_fcover_image_from_sentinelhub(polygon, date, location)
     elif evalscript == 'CLP':
-        return get_cloud_coverage_from_sentinelhub(polygon, date, location)
+        get_cloud_coverage_from_sentinelhub(polygon, date, location)
     elif evalscript == 'ALL':
-        return get_all_bands_image_from_sentinelhub(polygon, date, location)
+        get_all_bands_image_from_sentinelhub(polygon, date, location)
     elif evalscript == 'NDVI':
-        return get_ndvi_image_from_sentinelhub(polygon, date, location)
+        get_ndvi_image_from_sentinelhub(polygon, date, location)
     else:
-        return None, None
+        raise Exception
+    return SEN_HUB_OBJ.processing_units_consumed
     
     
 import time

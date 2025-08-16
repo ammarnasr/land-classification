@@ -15,14 +15,6 @@ import streamlit as st
 load_dotenv()
 
 
-# def get_sentinelhub_api_config():
-#     config = SHConfig()
-#     config.instance_id = os.getenv("instance_id")
-#     config.sh_client_id = os.getenv("sh_client_id")
-#     config.sh_client_secret = os.getenv("sh_client_secret")
-#     return config
-
-
 def get_sentinelhub_api_config():
     config = SHConfig()
     config.instance_id = st.secrets["instance_id"]
@@ -44,6 +36,8 @@ class SenHub:
         self.setInputParameters(data_source)
         self.setOutputParameters(identifier, mime_type)
         self.set_token()
+        
+        self.processing_units_consumed = 0 
 
     def setInputParameters(self, data_source):
         '''
@@ -142,11 +136,16 @@ class SenHub:
             config=self.config,
         )
 
-    def download_data(self, save=True , redownload=False):
+    def download_data(self, save=True , redownload=False, **kwargs):
         '''
         Make The Request and download the data
         '''
-        return self.request.get_data(save_data=save, redownload=redownload, max_threads=64)
+        response =  self.request.get_data(save_data=save, redownload=redownload, max_threads=64,decode_data=False,  **kwargs)
+        total_pu = response[0].headers['x-processingunits-spent']
+        self.processing_units_consumed += round(float(total_pu), 3)
+        print(f"\nProcessing units spent so far: {self.processing_units_consumed :.2f}")
+        return response
+        
 
 
 
