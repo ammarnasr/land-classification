@@ -149,14 +149,14 @@ class SenHub:
         return response
         
     def search_dates(self, start_date, end_date, 
-                     filter="eo:cloud_cover < 5",
+                     filter="",
                      fields={"include": ["properties.datetime", "properties.eo:cloud_cover"], "exclude": []}
                      )-> list:
         '''
         Search for Available dates in a given interval
         '''
         time_interval = start_date, end_date
-        
+        print(f"Searching dates in interval: {time_interval}")
         search_iterator = self.catalog.search(
             collection=self.data_source,
             bbox=self.bbox,
