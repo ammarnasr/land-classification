@@ -38,6 +38,7 @@ class SenHub:
         self.setOutputParameters(identifier, mime_type)
         self.set_token()
         self.catalog = SentinelHubCatalog(config=config)
+        self.latest_cost = 0
         
         self.processing_units_consumed = 0 
 
@@ -145,7 +146,8 @@ class SenHub:
         response =  self.request.get_data(save_data=save, redownload=redownload, max_threads=64,decode_data=False,  **kwargs)
         total_pu = response[0].headers['x-processingunits-spent']
         self.processing_units_consumed += round(float(total_pu), 3)
-        print(f"\nProcessing units spent so far: {self.processing_units_consumed :.2f}")
+        self.latest_cost = round(float(total_pu), 3)
+        
         return response
         
     def search_dates(self, start_date, end_date, 

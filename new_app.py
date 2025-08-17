@@ -106,7 +106,7 @@ def get_any_image_from_sentinelhub(polygon, date, evalscript, location='unknown'
     sen_hub_cli.make_bbox(bbox)
     sen_hub_cli.make_request(evalscript_code, date)
     imgs = sen_hub_cli.download_data()
-    return sen_hub_cli.processing_units_consumed
+    return sen_hub_cli.latest_cost
     
    
 
