@@ -119,7 +119,7 @@ def get_available_dates(gdf, year, return_dict=False) -> list:
     dates_dict = new_app.get_available_dates_from_sentinelhub(total_polygon, year=year)
     if return_dict:
         return dates_dict
-    dates = [d['properties']['datetime'].split('T')[0] for d in dates_dict]
+    dates = list(set([d['properties']['datetime'].split('T')[0] for d in dates_dict]))
     return dates
 
 
