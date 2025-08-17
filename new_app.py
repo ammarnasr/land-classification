@@ -33,7 +33,7 @@ def get_sen_hub_cli():
     if "sen_hub_cli" in CLIENTS_DICT:
         return CLIENTS_DICT["sen_hub_cli"]
     config = get_sentinelhub_api_config()
-    sen_hub_cli =SenHub(config, mime_type = MimeType.PNG)
+    sen_hub_cli =SenHub(config)
     CLIENTS_DICT["sen_hub_cli"] =sen_hub_cli
     return sen_hub_cli
 

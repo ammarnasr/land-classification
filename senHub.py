@@ -149,7 +149,7 @@ class SenHub:
         return response
         
     def search_dates(self, start_date, end_date, 
-                     filter="",
+                     filter=None,
                      fields={"include": ["properties.datetime", "properties.eo:cloud_cover"], "exclude": []}
                      )-> list:
         '''
