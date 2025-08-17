@@ -113,10 +113,13 @@ def get_bbox_info(gdf):
     return width, height, area, perimeter, gdf_bbox 
 
 
-def get_available_dates(gdf, year):
+def get_available_dates(gdf, year, return_dict=False) -> list:
     total_bounds = gdf.total_bounds
     total_polygon = shapely.geometry.box(*total_bounds, ccw=True)
-    dates = new_app.get_available_dates_from_sentinelhub(total_polygon, year=year)
+    dates_dict = new_app.get_available_dates_from_sentinelhub(total_polygon, year=year)
+    if return_dict:
+        return dates_dict
+    dates = [d['properties']['datetime'].split('T')[0] for d in dates_dict]
     return dates
 
 

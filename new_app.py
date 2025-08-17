@@ -27,16 +27,18 @@ SATELLITE_DIR = '/content/drive/MyDrive/Ammar Inference BIG SQUARES'
 PROCESSED_DIR = '/content/drive/MyDrive/Ammar Training/processed'
 CURATED_DIR   = '/content/drive/MyDrive/Ammar Training/curated'
 
-
-SEN_HUB_OBJ = None
-
-def get_sen_hub_obj():
-    if SEN_HUB_OBJ == None:
-        config = get_sentinelhub_api_config()
-        SEN_HUB_OBJ = SenHub(config, mime_type = MimeType.PNG)
-    return SEN_HUB_OBJ
+CLIENTS_DICT = {}
+INITIATED = False
+def get_sen_hub_cli():
+    if "sen_hub_cli" in CLIENTS_DICT:
+        return CLIENTS_DICT["sen_hub_cli"]
+    config = get_sentinelhub_api_config()
+    sen_hub_cli =SenHub(config, mime_type = MimeType.PNG)
+    CLIENTS_DICT["sen_hub_cli"] =sen_hub_cli
+    return sen_hub_cli
 
         
+
 
 
 def get_sentinelhub_api_config(use_st=False):
@@ -79,16 +81,13 @@ def get_folium_map(center = [15,32], zoom_start = 12, basemap = 'Google Satellit
     return m
 
 
-def get_available_dates_from_sentinelhub(polygon, year='2023'):
-    bounds = get_bounds_of_polygon(polygon)
-    token = get_sentinelhub_api_token()
+def get_available_dates_from_sentinelhub(polygon, year='2023') -> list:
     start_date = f'{year}-01-01'
-    mid_date = f'{year}-07-01'
     end_date = f'{year}-12-31'
-    dates_first_half = dates_utils.get_available_dates_from_sentinelhub(bounds, token, start_date, mid_date)
-    dates_second_half = dates_utils.get_available_dates_from_sentinelhub(bounds, token, mid_date, end_date)
-    dates = dates_first_half+dates_second_half
-    dates = list(set(dates))
+    bbox = get_bounds_of_polygon(polygon)
+    sen_hub_cli = get_sen_hub_cli()
+    sen_hub_cli.make_bbox(bbox)
+    dates = sen_hub_cli.search_dates(start_date=start_date, end_date=end_date)
     return dates
 
 
@@ -98,107 +97,18 @@ def get_satellite_image_dir(location_name, date, evalscript):
     return final_dir
 
 
-def get_true_color_image_from_sentinelhub(polygon, date, location='unknown'):
-    final_dir = get_satellite_image_dir(location, date, 'TRUECOLOR')
-    bbox = get_bounds_of_polygon(polygon)
-    evalscript_true_color = new_utils.get_sentinelhub_api_evalscript('TRUECOLOR')
-    SEN_HUB_OBJ.set_dir(final_dir)
-    SEN_HUB_OBJ.make_bbox(bbox)
-    SEN_HUB_OBJ.make_request(evalscript_true_color, date)
-    imgs = SEN_HUB_OBJ.download_data()
-    return imgs[0], final_dir
-
-def get_fcover_image_from_sentinelhub(polygon, date, location='unknown'):
-    final_dir = get_satellite_image_dir(location, date, 'FCOVER')
-    bbox = get_bounds_of_polygon(polygon)
-    evalscript_fcover = new_utils.get_sentinelhub_api_evalscript('FCOVER')
-    SEN_HUB_OBJ.set_dir(final_dir)
-    SEN_HUB_OBJ.make_bbox(bbox)
-    SEN_HUB_OBJ.make_request(evalscript_fcover, date)
-    imgs = SEN_HUB_OBJ.download_data()
-    return imgs[0], final_dir
-
-def get_cloud_coverage_from_sentinelhub(polygon, date, location='unknown'):
-    final_dir = get_satellite_image_dir(location, date, 'CLP')
-    bbox = get_bounds_of_polygon(polygon)
-    evalscript_cloud_coverage = new_utils.get_sentinelhub_api_evalscript('CLP')
-    SEN_HUB_OBJ.set_dir(final_dir)
-    SEN_HUB_OBJ.make_bbox(bbox)
-    SEN_HUB_OBJ.make_request(evalscript_cloud_coverage, date)
-    imgs = SEN_HUB_OBJ.download_data()
-    return imgs[0], final_dir
-
-def get_ndvi_image_from_sentinelhub(polygon, date, location='unknown'):
-    final_dir = get_satellite_image_dir(location, date, 'NDVI')
-    bbox = get_bounds_of_polygon(polygon)
-    evalscript_ndvi = new_utils.get_sentinelhub_api_evalscript('NDVI')
-    SEN_HUB_OBJ.set_dir(final_dir)
-    SEN_HUB_OBJ.make_bbox(bbox)
-    SEN_HUB_OBJ.make_request(evalscript_ndvi, date)
-    imgs = SEN_HUB_OBJ.download_data()
-    return imgs[0], final_dir
-
-def get_all_bands_image_from_sentinelhub(polygon, date, location='unknown'):
-    final_dir = get_satellite_image_dir(location, date, 'ALL')
-    bbox = get_bounds_of_polygon(polygon)
-    evalscript_all = new_utils.get_sentinelhub_api_evalscript('ALL')
-    SEN_HUB_OBJ.set_dir(final_dir)
-    SEN_HUB_OBJ.make_bbox(bbox)
-    SEN_HUB_OBJ.make_request(evalscript_all, date)
-    imgs = SEN_HUB_OBJ.download_data()
-    return imgs[0], final_dir
-
 def get_any_image_from_sentinelhub(polygon, date, evalscript, location='unknown'):
-    if evalscript == 'TRUECOLOR':
-        get_true_color_image_from_sentinelhub(polygon, date, location)
-    elif evalscript == 'FCOVER':
-        get_fcover_image_from_sentinelhub(polygon, date, location)
-    elif evalscript == 'CLP':
-        get_cloud_coverage_from_sentinelhub(polygon, date, location)
-    elif evalscript == 'ALL':
-        get_all_bands_image_from_sentinelhub(polygon, date, location)
-    elif evalscript == 'NDVI':
-        get_ndvi_image_from_sentinelhub(polygon, date, location)
-    else:
-        raise Exception
-    return SEN_HUB_OBJ.processing_units_consumed
+    final_dir = get_satellite_image_dir(location, date, evalscript)
+    bbox = get_bounds_of_polygon(polygon)
+    evalscript_code= new_utils.get_sentinelhub_api_evalscript(evalscript)
+    sen_hub_cli = get_sen_hub_cli()
+    sen_hub_cli.set_dir(final_dir)
+    sen_hub_cli.make_bbox(bbox)
+    sen_hub_cli.make_request(evalscript_code, date)
+    imgs = sen_hub_cli.download_data()
+    return sen_hub_cli.processing_units_consumed
     
-    
-import time
-# import traceback
-def get_any_image_from_sentinelhub(polygon, date, evalscript, location='unknown', num_retries=3):
-    attempt = 1
-    backoff = 1  # starting backoff time in seconds
-
-    while attempt <= num_retries:
-        try:
-            if evalscript == 'TRUECOLOR':
-                return get_true_color_image_from_sentinelhub(polygon, date, location)
-            elif evalscript == 'FCOVER':
-                return get_fcover_image_from_sentinelhub(polygon, date, location)
-            elif evalscript == 'CLP':
-                return get_cloud_coverage_from_sentinelhub(polygon, date, location)
-            elif evalscript == 'ALL':
-                return get_all_bands_image_from_sentinelhub(polygon, date, location)
-            elif evalscript == 'NDVI':
-                return get_ndvi_image_from_sentinelhub(polygon, date, location)
-            else:
-                # If no valid evalscript is provided, we exit.
-                print("Error: Invalid evalscript provided.")
-                return None, None
-        except Exception as e:
-            print(f"Attempt {attempt} failed with error: {e}")
-            # Optionally print the stack trace for debugging:
-            # traceback.print_exc()
-            if attempt == num_retries:
-                print("All retries have been exhausted.")
-                raise  # Reraise the exception after final attempt
-            else:
-                print(f"Retrying after {backoff} seconds...")
-                time.sleep(backoff)
-                backoff *= 2  # Exponential backoff
-                attempt += 1
-
+   
 
 def display_true_color_image(image, image_save_path=None):
     factor = 3.5/255
