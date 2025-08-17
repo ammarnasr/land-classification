@@ -158,7 +158,7 @@ class SenHub:
         Search for Available dates in a given interval
         '''
         time_interval = start_date, end_date
-        print(f"Searching dates in interval: {time_interval}")
+        print(f"Searching dates in interval {time_interval}:", end=' ')
         search_iterator = self.catalog.search(
             collection=self.data_source,
             bbox=self.bbox,
@@ -166,5 +166,8 @@ class SenHub:
             filter=filter,
             fields=fields,
         )
-        return list(search_iterator)
+        search_results = list(search_iterator)
+        print(f"Found n={len(search_results)} Dates")
+        return search_results
+        
         
